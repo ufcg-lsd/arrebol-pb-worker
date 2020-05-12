@@ -5,12 +5,13 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"github.com/ufcg-lsd/arrebol-pb-worker/utils"
 	"io/ioutil"
 	"log"
 )
 
 func Gen(id string) {
-	keyspath := getPrjPath() + "worker/keys"
+	keyspath := utils.GetPrjPath() + "worker/keys"
 	savePrivateFileTo := keyspath + "/" + id + ".priv"
 	savePublicFileTo := keyspath + "/" + id + ".pub"
 	bitSize := 4096
