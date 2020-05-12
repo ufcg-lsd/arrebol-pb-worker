@@ -9,29 +9,12 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"github.com/ufcg-lsd/arrebol-pb-worker/utils"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
-	"strings"
 )
-
-type TaskState uint8
-
-const (
-	TaskPending TaskState = iota
-	TaskRunning
-	TaskFinished
-	TaskFailed
-)
-
-type Task struct {
-	Commands       []string
-	ReportInterval int64
-	State          TaskState
-	Progress       int
-}
 
 type PBWorker struct {
 	ServerEndPoint string
@@ -44,66 +27,9 @@ type PBWorker struct {
 	QueueId        string
 }
 
-func reportReq(w *PBWorker, task *Task) {
-	url := w.ServerEndPoint + "/workers/" + w.Id + "/queues/" + w.QueueId + "/tasks"
-	requestBody, err := json.Marshal(task)
-
-	client := &http.Client{}
-	req, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(requestBody))
-	req.Header.Set("arrebol-worker-token", w.Token)
-
-	if err != nil {
-		// handle error
-		log.Fatal(err)
-	}
-
-	_, err = client.Do(req)
-	if err != nil {
-		// handle error
-		log.Fatal(err)
-	}
-}
-
-func (w *PBWorker) getTask() *Task {
-	if w.QueueId == "" {
-		log.Println("The queue id has not been set yet")
-		return nil
-	}
-
-	if w.Token == "" {
-		log.Println("The token has not been set yet")
-		return nil
-	}
-
-	url := w.ServerEndPoint + "/workers/" + w.Id + "/queues/" + w.QueueId
-	requestBody, err := json.Marshal(&PBWorker{Ram: w.Ram, Vcpu: w.Vcpu, Image: w.Image, Address: w.Address, Id: w.Id})
-
-	client := &http.Client{}
-	req, err := http.NewRequest(http.MethodGet, url, bytes.NewBuffer(requestBody))
-	req.Header.Set("arrebol-worker-token", w.Token)
-
-	if err != nil {
-		// handle error
-		log.Fatal(err)
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		// handle error
-		log.Fatal(err)
-	}
-
-	defer resp.Body.Close()
-
-	reqBody, err := ioutil.ReadAll(resp.Body)
-	var task Task
-	json.Unmarshal(reqBody, &task)
-
-	return &task
-}
 
 func getPrivateKey(id string) *rsa.PrivateKey {
-	readPrivKey, err := ioutil.ReadFile(getPrjPath() + "worker/keys/" + id + ".priv")
+	readPrivKey, err := ioutil.ReadFile(utils.GetPrjPath() + "worker/keys/" + id + ".priv")
 	if err != nil {
 		log.Fatal("The private key is not where it should be")
 	}
@@ -112,7 +38,7 @@ func getPrivateKey(id string) *rsa.PrivateKey {
 
 	rsaPrivateKey, err := x509.ParsePKCS1PrivateKey(pemDecodedPrivKey.Bytes)
 	if err != nil {
-		log.Fatal("Error on parsing private key1 " + err.Error())
+		log.Fatal("Error on parsing private key " + err.Error())
 	}
 
 	return rsaPrivateKey
@@ -135,31 +61,24 @@ func signMessage(privateKey *rsa.PrivateKey, message []byte) ([]byte, []byte) {
 }
 
 func GetPublicKey(id string) *rsa.PublicKey {
-	readPubKey, err := ioutil.ReadFile(getPrjPath() + "worker/keys/" + id + ".pub")
+	readPubKey, err := ioutil.ReadFile(utils.GetPrjPath()  + "worker/keys/" + id + ".pub")
 	if err != nil {
-		log.Fatal("The private key is not where it should be")
+		log.Fatal("The public key is not where it should be")
 	}
 
 	pemDecodedPubKey, _ := pem.Decode(readPubKey)
 
 	rsaPrivateKey, err := x509.ParsePKCS1PublicKey(pemDecodedPubKey.Bytes)
 	if err != nil {
-		log.Fatal("Error on parsing public key1 " + err.Error())
+		log.Fatal("Error on parsing public key " + err.Error())
 	}
 
 	return rsaPrivateKey
 }
 
-func verifySignature(key *rsa.PublicKey, hash []byte, signature []byte) bool {
-	err := rsa.VerifyPSS(key, crypto.SHA256, hash, signature, nil)
-	if err != nil {
-		return false
-	}
-	return true
-}
 
 func (w *PBWorker) Subscribe() {
-	requestBody, err := json.Marshal(&PBWorker{Ram: w.Ram, Vcpu: w.Vcpu, Image: w.Image, Address: w.Address, Id: w.Id})
+	requestBody, err := json.Marshal(&PBWorker{Ram: w.Ram, Vcpu: w.Vcpu, Image: w.Image, Address: w.Address, Id: w.Id, QueueId: w.QueueId})
 
 	data, hashSum := signMessage(getPrivateKey(w.Id), requestBody)
 
@@ -176,7 +95,8 @@ func (w *PBWorker) Subscribe() {
 	resp, err := client.Do(req)
 	if err != nil {
 		// handle error
-		log.Fatal(err)
+		log.Fatal("Unable to subscribe in the server")
+		panic(err)
 	}
 
 	defer resp.Body.Close()
@@ -189,18 +109,11 @@ func (w *PBWorker) Subscribe() {
 	w.QueueId = parsedBody["queue_id"]
 }
 
-func getPrjPath() string {
-	path_cmd := exec.Command("/bin/sh", "-c", "echo $GOPATH")
-	path, _ := path_cmd.Output()
-	path_str := strings.TrimSpace(string(path))
-	return path_str + "/src/github.com/ufcg-lsd/arrebol-pb-worker/"
-}
-
 func LoadWorker() PBWorker {
 
 	log.Println("Starting reading configuration process")
-	// it must open the port and make all scripts executable
-	file, err := os.Open(getPrjPath()+ "worker/worker-conf.json")
+
+	file, err := os.Open(utils.GetPrjPath() + "worker/worker-conf.json")
 	defer file.Close()
 	if err != nil {
 		log.Println("Error on opening configuration file", err.Error())
@@ -212,9 +125,6 @@ func LoadWorker() PBWorker {
 	if err != nil {
 		log.Println("Error on decoding configuration file", err.Error())
 	}
-
-	log.Println("Worker: " + configuration.Vcpu)
-	log.Println(configuration)
 
 	return configuration
 }
