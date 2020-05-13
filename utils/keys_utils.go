@@ -1,22 +1,23 @@
-package worker
+package utils
 
 import (
+	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
-	"github.com/ufcg-lsd/arrebol-pb-worker/utils"
 	"io/ioutil"
 	"log"
 )
 
 func Gen(id string) {
-	keyspath := utils.GetPrjPath() + "worker/keys"
+	keyspath := GetPrjPath() + "worker/keys"
 	savePrivateFileTo := keyspath + "/" + id + ".priv"
 	savePublicFileTo := keyspath + "/" + id + ".pub"
 	bitSize := 4096
 
-	privateKey, err := generatePrivateKey(bitSize)
+	privateKey, err := GeneratePrivateKey(bitSize)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -36,8 +37,64 @@ func Gen(id string) {
 	}
 }
 
-// generatePrivateKey creates a RSA Private Key of specified byte size
-func generatePrivateKey(bitSize int) (*rsa.PrivateKey, error) {
+func GetPrivateKey(id string) *rsa.PrivateKey {
+	readPrivKey, err := ioutil.ReadFile(GetPrjPath() + "worker/keys/" + id + ".priv")
+	if err != nil {
+		log.Fatal("The private key is not where it should be")
+	}
+
+	pemDecodedPrivKey, _ := pem.Decode(readPrivKey)
+
+	rsaPrivateKey, err := x509.ParsePKCS1PrivateKey(pemDecodedPrivKey.Bytes)
+	if err != nil {
+		log.Fatal("Error on parsing private key " + err.Error())
+	}
+
+	return rsaPrivateKey
+}
+
+func SignMessage(privateKey *rsa.PrivateKey, message []byte) ([]byte, []byte) {
+	messageHash := sha256.New()
+	_, err := messageHash.Write(message)
+	if err != nil {
+		panic(err)
+	}
+	msgHashSum := messageHash.Sum(nil)
+
+	signature, err := rsa.SignPSS(rand.Reader, privateKey, crypto.SHA256, msgHashSum, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	return signature, msgHashSum
+}
+
+func VerifySignature(key *rsa.PublicKey, hash []byte, signature []byte) bool {
+	err := rsa.VerifyPSS(key, crypto.SHA256, hash, signature, nil)
+	if err != nil {
+		return false
+	}
+	return true
+}
+
+func GetPublicKey(id string) *rsa.PublicKey {
+	readPubKey, err := ioutil.ReadFile(GetPrjPath()  + "worker/keys/" + id + ".pub")
+	if err != nil {
+		log.Fatal("The public key is not where it should be")
+	}
+
+	pemDecodedPubKey, _ := pem.Decode(readPubKey)
+
+	rsaPrivateKey, err := x509.ParsePKCS1PublicKey(pemDecodedPubKey.Bytes)
+	if err != nil {
+		log.Fatal("Error on parsing public key " + err.Error())
+	}
+
+	return rsaPrivateKey
+}
+
+// GeneratePrivateKey creates a RSA Private Key of specified byte size
+func GeneratePrivateKey(bitSize int) (*rsa.PrivateKey, error) {
 	// Private Key generation
 	privateKey, err := rsa.GenerateKey(rand.Reader, bitSize)
 	if err != nil {

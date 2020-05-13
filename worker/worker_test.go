@@ -52,59 +52,10 @@ func TestLoadWorker(t *testing.T) {
 	cleanup()
 }
 
-func TestGetPublicKey(t *testing.T) {
-	//setup
-	setup()
-
-	//exercise
-	publicKey := GetPublicKey("1023")
-
-	//verification
-	if publicKey == nil {
-		t.Errorf("Error on retrieving created public key")
-	}
-
-	//cleanup
-	cleanup()
-}
-
-func TestGetPrivateKey(t *testing.T) {
-	//setup
-	setup()
-
-	//exercise
-	privateKey := GetPrivateKey("1023")
-
-	//verification
-	if privateKey == nil {
-		t.Errorf("Error on retrieving created private key")
-	}
-
-	//cleanup
-	cleanup()
-}
-
-func TestSignMessage(t *testing.T) {
-	//setup
-	setup()
-	pbWorker, _ := json.Marshal(&pbWorkerTestInstance)
-
-	//exercise
-	signedWorker, hashSum := SignMessage(GetPrivateKey(pbWorkerTestInstance.Id), pbWorker)
-
-	//verification
-	if ! VerifySignature(GetPublicKey(pbWorkerTestInstance.Id), hashSum, signedWorker) {
-		t.Errorf("Signature verification doesnt match the specifications")
-	}
-
-	//cleanup
-	cleanup()
-}
-
 func TestPBWorker_Subscribe(t *testing.T) {
 	//setup
 	setup()
-	Client = &MockClient{}
+	utils.Client = &MockClient{}
 
 	body := make(map[string]string)
 	body["arrebol-worker-token"] = "test-token"
@@ -135,7 +86,7 @@ func TestPBWorker_Subscribe(t *testing.T) {
 
 //Test utils functions
 func setup()  {
-	Gen("1023")
+	utils.Gen("1023")
 
 	file, _ := json.MarshalIndent(pbWorkerTestInstance, "", " ")
 

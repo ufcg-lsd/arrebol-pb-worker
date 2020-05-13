@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/rsa"
 	"encoding/json"
+	"github.com/ufcg-lsd/arrebol-pb-worker/utils"
 	"github.com/ufcg-lsd/arrebol-pb-worker/worker"
 	"log"
 	"net/http"
@@ -15,11 +16,11 @@ func setup(serverEndPoint string, workerId string) {
 	// of the worker and to send the public part to the server.
 	log.Println("Starting to gen rsa key pair with workerid: " + workerId)
 
-	worker.Gen(workerId)
+	utils.Gen(workerId)
 
 	log.Println("Sending pub key to the server")
 	url := serverEndPoint + "/workers/publicKey"
-	requestBody, err := json.Marshal(&map[string]*rsa.PublicKey{"key": worker.GetPublicKey(workerId)})
+	requestBody, err := json.Marshal(&map[string]*rsa.PublicKey{"key": utils.GetPublicKey(workerId)})
 
 	log.Println("url: " + url)
 	client := &http.Client{}
