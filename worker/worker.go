@@ -27,8 +27,16 @@ type PBWorker struct {
 	QueueId        string
 }
 
+type HTTPClient interface {
+	Do(req *http.Request) (*http.Response, error)
+}
 
-func getPrivateKey(id string) *rsa.PrivateKey {
+var (
+	Client HTTPClient = &http.Client{}
+)
+
+
+func GetPrivateKey(id string) *rsa.PrivateKey {
 	readPrivKey, err := ioutil.ReadFile(utils.GetPrjPath() + "worker/keys/" + id + ".priv")
 	if err != nil {
 		log.Fatal("The private key is not where it should be")
@@ -44,7 +52,7 @@ func getPrivateKey(id string) *rsa.PrivateKey {
 	return rsaPrivateKey
 }
 
-func signMessage(privateKey *rsa.PrivateKey, message []byte) ([]byte, []byte) {
+func SignMessage(privateKey *rsa.PrivateKey, message []byte) ([]byte, []byte) {
 	messageHash := sha256.New()
 	_, err := messageHash.Write(message)
 	if err != nil {
@@ -58,6 +66,14 @@ func signMessage(privateKey *rsa.PrivateKey, message []byte) ([]byte, []byte) {
 	}
 
 	return signature, msgHashSum
+}
+
+func VerifySignature(key *rsa.PublicKey, hash []byte, signature []byte) bool {
+	err := rsa.VerifyPSS(key, crypto.SHA256, hash, signature, nil)
+	if err != nil {
+		return false
+	}
+	return true
 }
 
 func GetPublicKey(id string) *rsa.PublicKey {
@@ -80,19 +96,19 @@ func GetPublicKey(id string) *rsa.PublicKey {
 func (w *PBWorker) Subscribe() {
 	requestBody, err := json.Marshal(&PBWorker{Ram: w.Ram, Vcpu: w.Vcpu, Image: w.Image, Address: w.Address, Id: w.Id, QueueId: w.QueueId})
 
-	data, hashSum := signMessage(getPrivateKey(w.Id), requestBody)
+	data, hashSum := SignMessage(GetPrivateKey(w.Id), requestBody)
 
 	payload, _ := json.Marshal(&map[string][]byte{"data": data, "hashSum": hashSum})
 
 	url := w.ServerEndPoint + "/workers"
-	client := &http.Client{}
+
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(payload))
 	if err != nil {
 		// handle error
 		log.Fatal(err)
 	}
 
-	resp, err := client.Do(req)
+	resp, err := Client.Do(req)
 	if err != nil {
 		// handle error
 		log.Fatal("Unable to subscribe in the server")
