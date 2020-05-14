@@ -1,13 +1,11 @@
 package main
 
 import (
-	"bytes"
 	"crypto/rsa"
-	"encoding/json"
+	"github.com/joho/godotenv"
 	"github.com/ufcg-lsd/arrebol-pb-worker/utils"
 	"github.com/ufcg-lsd/arrebol-pb-worker/worker"
 	"log"
-	"net/http"
 	"os"
 )
 
@@ -20,28 +18,11 @@ func setup(serverEndPoint string, workerId string) {
 
 	log.Println("Sending pub key to the server")
 	url := serverEndPoint + "/workers/publicKey"
-	requestBody, err := json.Marshal(&map[string]*rsa.PublicKey{"key": utils.GetPublicKey(workerId)})
 
-	log.Println("url: " + url)
-	client := &http.Client{}
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(requestBody))
-	if err != nil {
-		// handle error
-		log.Fatal(err)
-	}
+	httpResp := utils.Post(&map[string]*rsa.PublicKey{"key": utils.GetPublicKey(workerId)}, url)
 
-	resp, err := client.Do(req)
-	if err != nil {
-		// handle error
-		log.Fatal(err)
-		panic(err)
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 201 {
+	if httpResp.StatusCode != 201 {
 		log.Fatal("Unable to send public key to the server")
-		panic(err)
 	}
 }
 
@@ -52,6 +33,12 @@ func isTokenValid(token string) bool {
 func main() {
 	// this main function start the worker following the chosen implementation
 	// passed by arg in the cli. The defaultWorker is started if no arg has been received.
+	err := godotenv.Load()
+
+	if err != nil {
+		log.Println("No .env file found")
+	}
+
 	switch len(os.Args) {
 	case 2:
 		workerImpl := os.Args[1]
@@ -71,7 +58,5 @@ func defaultWorker() {
 		if !isTokenValid(workerInstance.Token) {
 			workerInstance.Subscribe()
 		}
-		//task := worker.getTask()
-		// worker.execTask(task)
 	}
 }

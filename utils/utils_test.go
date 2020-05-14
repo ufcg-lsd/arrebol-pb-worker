@@ -2,6 +2,8 @@ package utils
 
 import (
 	"encoding/json"
+	"github.com/joho/godotenv"
+	"log"
 	"testing"
 )
 
@@ -9,7 +11,22 @@ const (
 	WorkerId = "1023"
 )
 
-func TestGetPublicKey(t *testing.T) {
+func setup() {
+	err := godotenv.Load("../.env")
+
+	if err != nil {
+		log.Println("No .env file found")
+	}
+}
+
+func TestModule(t *testing.T) {
+	setup()
+	t.Run("TestGetPublicKey", getPublicKey)
+	t.Run("TestGetPublicKey", getPrivateKey)
+	t.Run("TestGetPublicKey", signMessage)
+}
+
+func getPublicKey(t *testing.T) {
 	//setup
 	Gen(WorkerId)
 
@@ -22,7 +39,7 @@ func TestGetPublicKey(t *testing.T) {
 	}
 }
 
-func TestGetPrivateKey(t *testing.T) {
+func getPrivateKey(t *testing.T) {
 	//setup
 	Gen(WorkerId)
 
@@ -35,13 +52,17 @@ func TestGetPrivateKey(t *testing.T) {
 	}
 }
 
-func TestSignMessage(t *testing.T) {
+func signMessage(t *testing.T) {
 	//setup
 	Gen(WorkerId)
 
 	mockedData := make(map[string]string)
 
-	marshalledData, _ := json.Marshal(mockedData)
+	marshalledData, err := json.Marshal(mockedData)
+
+	if err != nil {
+		t.Errorf("Error on mashalling the mockedData")
+	}
 
 	//exercise
 	signedWorker, hashSum := SignMessage(GetPrivateKey(WorkerId), marshalledData)

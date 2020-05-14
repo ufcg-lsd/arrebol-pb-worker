@@ -4,10 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/ufcg-lsd/arrebol-pb-worker/utils"
-	"io/ioutil"
-	"log"
-	"net/http"
-	"os/exec"
 	"testing"
 )
 
@@ -24,52 +20,29 @@ var (
 	}
 )
 
-type MockClient struct {
-	DoFunc func(req *http.Request) (*http.Response, error)
-}
+func TestParseWorkerConfiguration(t *testing.T) {
+	testingWorkerAsByte, err := json.Marshal(pbWorkerTestInstance)
 
-var (
-	GetDoFunc func(req *http.Request) (*http.Response, error)
-)
-
-func (m *MockClient) Do(req *http.Request) (*http.Response, error) {
-	return GetDoFunc(req)
-}
-
-func TestLoadWorker(t *testing.T) {
- 	//setup
-	setup()
-
-	//exercise
-	workerInstance := LoadWorker()
-
-	//verification
-	if workerInstance != pbWorkerTestInstance {
-		t.Errorf("The loaded worker is different from the expected one")
+	if err != nil {
+		t.Errorf("Error on bytefying test worker")
 	}
 
-	//cleanup
-	cleanup()
+	parsedWorker := ParseWorkerConfiguration(bytes.NewReader(testingWorkerAsByte))
+
+	if parsedWorker != pbWorkerTestInstance {
+		t.Errorf("The parsed worked is different from the expected one")
+	}
 }
 
-func TestPBWorker_Subscribe(t *testing.T) {
-	//setup
-	setup()
-	utils.Client = &MockClient{}
-
+func TestHandleSubscriptionResponse(t *testing.T) {
 	body := make(map[string]string)
 	body["arrebol-worker-token"] = "test-token"
 	body["queue_id"] = "192038"
 
 	bodyAsByte, _ := json.Marshal(body)
-	parsedBody := ioutil.NopCloser(bytes.NewReader(bodyAsByte))
-
-	GetDoFunc =  func(*http.Request) (*http.Response, error) {
-		return &http.Response{Body: parsedBody, StatusCode: 201}, nil
-	}
 
 	//exercise
-	pbWorkerTestInstance.Subscribe()
+	HandleSubscriptionResponse(&utils.HttpResponse{Body: bodyAsByte, StatusCode: 201}, &pbWorkerTestInstance)
 
 	//verification
 	if pbWorkerTestInstance.QueueId != "192038" {
@@ -79,28 +52,4 @@ func TestPBWorker_Subscribe(t *testing.T) {
 	if pbWorkerTestInstance.Token != "test-token" {
 		t.Errorf("The token is not the expected one")
 	}
-
-	//cleanup
-	cleanup()
-}
-
-//Test utils functions
-func setup()  {
-	utils.Gen("1023")
-
-	file, _ := json.MarshalIndent(pbWorkerTestInstance, "", " ")
-
-	exec.Command("bash", "-c", "mv " + utils.GetPrjPath() + "worker/worker-conf.json " +
-		utils.GetPrjPath() +"worker/worker-orginal-conf.json")
-
-	_ = ioutil.WriteFile(utils.GetPrjPath()+"worker/worker-conf.json", file, 0644)
-}
-
-func cleanup() {
-	exec.Command("bash", "-c", "mv " + utils.GetPrjPath() + "worker/worker-original-conf.json " +
-		utils.GetPrjPath() +"worker/worker-conf.json")
-
-	keysPath := utils.GetPrjPath() + "worker/keys/*"
-	cmd := exec.Command("bash", "-c", "rm " + keysPath)
-	log.Print(cmd.Output())
 }

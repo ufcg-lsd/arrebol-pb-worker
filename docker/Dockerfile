@@ -1,4 +1,4 @@
-FROM golang:latest
+FROM golang:1.13.10
 
 WORKDIR /go/src/github.com/ufcg-lsd/arrebol-pb-worker/
 

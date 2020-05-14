@@ -22,14 +22,24 @@ type HttpResponse struct {
 	StatusCode int
 }
 
-// It send an http post to the endpoint signing the body with the worker's private key
-func Post(workerId string, body interface{}, endpoint string) *HttpResponse{
+func SignedPost(workerId string, body interface{}, endpoint string) *HttpResponse{
 	requestBody, err := json.Marshal(body)
+
+	if err != nil {
+		log.Fatal("Error on marshalling the request body")
+	}
+
 	data, hashSum := SignMessage(GetPrivateKey(workerId), requestBody)
 
-	payload, _ := json.Marshal(&map[string][]byte{"data": data, "hashSum": hashSum})
 
-	req, err := http.NewRequest(http.MethodPost, endpoint, bytes.NewBuffer(payload))
+	return Post(&map[string][]byte{"data": data, "hashSum": hashSum}, endpoint)
+}
+
+// It send an http post to the endpoint signing the body with the worker's private key
+func Post(body interface{}, endpoint string) *HttpResponse{
+	requestBody, err := json.Marshal(body)
+
+	req, err := http.NewRequest(http.MethodPost, endpoint, bytes.NewBuffer(requestBody))
 
 	if err != nil {
 		// handle error
@@ -37,13 +47,18 @@ func Post(workerId string, body interface{}, endpoint string) *HttpResponse{
 	}
 
 	resp, err := Client.Do(req)
+
 	if err != nil {
-		// handle error
 		log.Fatal("Unable to reach the server on endpoint: " + endpoint)
 		panic(err)
 	}
+	defer resp.Body.Close()
 
-	resposeBody, _ := ioutil.ReadAll(resp.Body)
+	respBody, err := ioutil.ReadAll(resp.Body)
 
-	return &HttpResponse{Body: resposeBody, Headers: resp.Header, StatusCode: resp.StatusCode}
+	if err != nil {
+		log.Fatal("Error on parsing the body to byte")
+	}
+
+	return &HttpResponse{Body: respBody, Headers: resp.Header, StatusCode: resp.StatusCode}
 }

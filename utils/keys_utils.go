@@ -9,10 +9,15 @@ import (
 	"encoding/pem"
 	"io/ioutil"
 	"log"
+	"os"
+)
+
+const (
+	KeysPathKey = "KEYS_PATH"
 )
 
 func Gen(id string) {
-	keyspath := GetPrjPath() + "worker/keys"
+	keyspath := os.Getenv(KeysPathKey)
 	savePrivateFileTo := keyspath + "/" + id + ".priv"
 	savePublicFileTo := keyspath + "/" + id + ".pub"
 	bitSize := 4096
@@ -22,9 +27,7 @@ func Gen(id string) {
 		log.Fatal(err.Error())
 	}
 
-	publicKeyBytes := generatePublicKey(&privateKey.PublicKey)
-
-	privateKeyBytes := encodePrivateKeyToPEM(privateKey)
+	privateKeyBytes, publicKeyBytes := encodeKeysToPem(privateKey, &privateKey.PublicKey)
 
 	err = writeKeyToFile(privateKeyBytes, savePrivateFileTo)
 	if err != nil {
@@ -38,12 +41,18 @@ func Gen(id string) {
 }
 
 func GetPrivateKey(id string) *rsa.PrivateKey {
-	readPrivKey, err := ioutil.ReadFile(GetPrjPath() + "worker/keys/" + id + ".priv")
+	keyspath := os.Getenv(KeysPathKey)
+	readPrivKey, err := ioutil.ReadFile(keyspath + "/" + id + ".priv")
+
 	if err != nil {
 		log.Fatal("The private key is not where it should be")
 	}
 
-	pemDecodedPrivKey, _ := pem.Decode(readPrivKey)
+	pemDecodedPrivKey, rest := pem.Decode(readPrivKey)
+
+	if len(rest) > 0 {
+		log.Fatal("Error on decoding private key; the rest is not empty.")
+	}
 
 	rsaPrivateKey, err := x509.ParsePKCS1PrivateKey(pemDecodedPrivKey.Bytes)
 	if err != nil {
@@ -55,10 +64,16 @@ func GetPrivateKey(id string) *rsa.PrivateKey {
 
 func SignMessage(privateKey *rsa.PrivateKey, message []byte) ([]byte, []byte) {
 	messageHash := sha256.New()
-	_, err := messageHash.Write(message)
+	writtenBytesCounter, err := messageHash.Write(message)
+
 	if err != nil {
 		panic(err)
 	}
+
+	if writtenBytesCounter != len(message) {
+		log.Fatal("The message has not been entirely written in the message hash.")
+	}
+
 	msgHashSum := messageHash.Sum(nil)
 
 	signature, err := rsa.SignPSS(rand.Reader, privateKey, crypto.SHA256, msgHashSum, nil)
@@ -78,12 +93,17 @@ func VerifySignature(key *rsa.PublicKey, hash []byte, signature []byte) bool {
 }
 
 func GetPublicKey(id string) *rsa.PublicKey {
-	readPubKey, err := ioutil.ReadFile(GetPrjPath()  + "worker/keys/" + id + ".pub")
+	keyspath := os.Getenv(KeysPathKey)
+	readPubKey, err := ioutil.ReadFile(keyspath  + "/" + id + ".pub")
 	if err != nil {
 		log.Fatal("The public key is not where it should be")
 	}
 
-	pemDecodedPubKey, _ := pem.Decode(readPubKey)
+	pemDecodedPubKey, rest := pem.Decode(readPubKey)
+
+	if len(rest) > 0 {
+		log.Fatal("Error on decoding public key; the rest is not empty.")
+	}
 
 	rsaPrivateKey, err := x509.ParsePKCS1PublicKey(pemDecodedPubKey.Bytes)
 	if err != nil {
@@ -111,11 +131,9 @@ func GeneratePrivateKey(bitSize int) (*rsa.PrivateKey, error) {
 	return privateKey, nil
 }
 
-// encodePrivateKeyToPEM encodes Private Key from RSA to PEM format
-func encodePrivateKeyToPEM(privateKey *rsa.PrivateKey) []byte {
-	// Get ASN.1 DER format
+func encodeKeysToPem(privateKey *rsa.PrivateKey, publicKey *rsa.PublicKey) ([]byte, []byte) {
 	privDER := x509.MarshalPKCS1PrivateKey(privateKey)
-
+	publicDER := x509.MarshalPKCS1PublicKey(publicKey)
 	// pem.Block
 	privBlock := pem.Block{
 		Type:    "RSA PRIVATE KEY",
@@ -123,18 +141,6 @@ func encodePrivateKeyToPEM(privateKey *rsa.PrivateKey) []byte {
 		Bytes:   privDER,
 	}
 
-	// Private key in PEM format
-	privatePEM := pem.EncodeToMemory(&privBlock)
-
-	return privatePEM
-}
-
-// encodePrivateKeyToPEM encodes Private Key from RSA to PEM format
-func encodePublicKeyToPEM(publicKey *rsa.PublicKey) []byte {
-	// Get ASN.1 DER format
-	publicDER := x509.MarshalPKCS1PublicKey(publicKey)
-
-	// pem.Block
 	publicBlock := pem.Block{
 		Type:    "RSA PUBLIC KEY",
 		Headers: nil,
@@ -142,16 +148,10 @@ func encodePublicKeyToPEM(publicKey *rsa.PublicKey) []byte {
 	}
 
 	// Private key in PEM format
+	privatePEM := pem.EncodeToMemory(&privBlock)
 	publicPEM := pem.EncodeToMemory(&publicBlock)
 
-	return publicPEM
-}
-
-// generatePublicKey take a rsa.PublicKey and return bytes suitable for writing to .pub file
-// returns in the format "ssh-rsa ..."
-func generatePublicKey(privatekey *rsa.PublicKey) []byte {
-	return encodePublicKeyToPEM(privatekey)
-
+	return privatePEM, publicPEM
 }
 
 // writePemToFile writes keys to a file
