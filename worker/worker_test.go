@@ -9,11 +9,8 @@ import (
 
 var (
 	pbWorkerTestInstance = Worker{
-		ServerEndPoint: "http://localhost:8000/v1",
 		Vcpu:           "1",
 		Ram:            "3",
-		Image:          "ubuntu",
-		Address:        "10.11.19.9",
 		Token:          "test-token",
 		Id:             "1023",
 		QueueId:        "0932",
