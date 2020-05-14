@@ -19,15 +19,10 @@ func setup() {
 	}
 }
 
-func TestModule(t *testing.T) {
-	setup()
-	t.Run("TestGetPublicKey", getPublicKey)
-	t.Run("TestGetPublicKey", getPrivateKey)
-	t.Run("TestGetPublicKey", signMessage)
-}
 
-func getPublicKey(t *testing.T) {
+func TestGetPublicKey(t *testing.T) {
 	//setup
+	setup()
 	GenAccessKeys(WorkerId)
 
 	//exercise
@@ -39,8 +34,9 @@ func getPublicKey(t *testing.T) {
 	}
 }
 
-func getPrivateKey(t *testing.T) {
+func TestGetPrivateKey(t *testing.T) {
 	//setup
+	setup()
 	GenAccessKeys(WorkerId)
 
 	//exercise
@@ -52,8 +48,9 @@ func getPrivateKey(t *testing.T) {
 	}
 }
 
-func signMessage(t *testing.T) {
+func TestSignMessage(t *testing.T) {
 	//setup
+	setup()
 	GenAccessKeys(WorkerId)
 
 	mockedData := make(map[string]string)

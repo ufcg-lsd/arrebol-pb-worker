@@ -29,37 +29,45 @@ func GenAccessKeys(id string) {
 
 	privateKeyBytes, publicKeyBytes := encodeKeysToPem(privateKey, &privateKey.PublicKey)
 
-	err = writeKeyToFile(privateKeyBytes, privateKeyPath)
+	err = saveKey(privateKeyBytes, privateKeyPath)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 
-	err = writeKeyToFile(publicKeyBytes, publicKeyPath)
+	err = saveKey(publicKeyBytes, publicKeyPath)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 }
 
 func GetPrivateKey(id string) *rsa.PrivateKey {
+	keyName := "/" + id + ".priv"
+	decodedKey := decodeKey(keyName)
+
+	rsaKey, err := x509.ParsePKCS1PrivateKey(decodedKey.Bytes)
+	if err != nil {
+		log.Fatal("Error on parsing private key " + err.Error())
+	}
+
+	return rsaKey
+}
+
+
+func decodeKey(keyName string)  *pem.Block {
 	keyspath := os.Getenv(KeysPathKey)
-	keyContent, err := ioutil.ReadFile(keyspath + "/" + id + ".priv")
+	keyContent, err := ioutil.ReadFile(keyspath + keyName)
 
 	if err != nil {
 		log.Fatal("The private key is not where it should be")
 	}
 
-	pemDecodedPrivKey, rest := pem.Decode(keyContent)
+	decodedKey, rest := pem.Decode(keyContent)
 
 	if len(rest) > 0 {
 		log.Fatal("Error on decoding private key; the rest is not empty.")
 	}
 
-	rsaPrivateKey, err := x509.ParsePKCS1PrivateKey(pemDecodedPrivKey.Bytes)
-	if err != nil {
-		log.Fatal("Error on parsing private key " + err.Error())
-	}
-
-	return rsaPrivateKey
+	return decodedKey
 }
 
 func SignMessage(privateKey *rsa.PrivateKey, message []byte) ([]byte, []byte) {
@@ -93,24 +101,15 @@ func VerifySignature(key *rsa.PublicKey, hash []byte, signature []byte) bool {
 }
 
 func GetPublicKey(id string) *rsa.PublicKey {
-	keyspath := os.Getenv(KeysPathKey)
-	keyContent, err := ioutil.ReadFile(keyspath  + "/" + id + ".pub")
-	if err != nil {
-		log.Fatal("The public key is not where it should be")
-	}
+	keyName := "/" + id + ".pub"
+	decodedKey := decodeKey(keyName)
 
-	pemDecodedPubKey, rest := pem.Decode(keyContent)
-
-	if len(rest) > 0 {
-		log.Fatal("Error on decoding public key; the rest is not empty.")
-	}
-
-	rsaPrivateKey, err := x509.ParsePKCS1PublicKey(pemDecodedPubKey.Bytes)
+	rsaKey, err := x509.ParsePKCS1PublicKey(decodedKey.Bytes)
 	if err != nil {
 		log.Fatal("Error on parsing public key " + err.Error())
 	}
 
-	return rsaPrivateKey
+	return rsaKey
 }
 
 // GeneratePrivateKey creates a RSA Private Key of specified byte size
@@ -154,13 +153,12 @@ func encodeKeysToPem(privateKey *rsa.PrivateKey, publicKey *rsa.PublicKey) ([]by
 	return privatePEM, publicPEM
 }
 
-// writePemToFile writes keys to a file
-func writeKeyToFile(keyBytes []byte, saveFileTo string) error {
-	err := ioutil.WriteFile(saveFileTo, keyBytes, 0600)
+func saveKey(keyBytes []byte, filePath string) error {
+	err := ioutil.WriteFile(filePath, keyBytes, 0600)
 	if err != nil {
 		return err
 	}
 
-	log.Printf("Key saved to: %s", saveFileTo)
+	log.Printf("Key saved to: %s", filePath)
 	return nil
 }
