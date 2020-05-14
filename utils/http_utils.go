@@ -32,8 +32,9 @@ func SignedPost(workerId string, body interface{}, endpoint string) *HttpRespons
 
 	data, hashSum := SignMessage(GetPrivateKey(workerId), requestBody)
 
+	payload := &map[string][]byte{"data": data, "hashSum": hashSum}
 
-	return Post(&map[string][]byte{"data": data, "hashSum": hashSum}, endpoint)
+	return Post(payload, endpoint)
 }
 
 func Post(body interface{}, endpoint string) *HttpResponse{

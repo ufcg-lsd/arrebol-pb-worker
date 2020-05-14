@@ -9,17 +9,22 @@ import (
 	"os"
 )
 
+const (
+	ConfFilePathKey = "CONF_FILE"
+	ServerEndpointKey = "SERVER_ENDPOINT"
+)
+
 func setup(serverEndPoint string, workerId string) {
 	// The setup routine is responsible for generates the rsa key pairs
 	// of the worker and to send the public part to the server.
 	log.Println("Starting to gen rsa key pair with workerid: " + workerId)
 
-	utils.Gen(workerId)
+	utils.GenAccessKeys(workerId)
 
 	log.Println("Sending pub key to the server")
 	url := serverEndPoint + "/workers/publicKey"
-
-	httpResp := utils.Post(&map[string]*rsa.PublicKey{"key": utils.GetPublicKey(workerId)}, url)
+	requestBody := &map[string]*rsa.PublicKey{"key": utils.GetPublicKey(workerId)}
+	httpResp := utils.Post(requestBody, url)
 
 	if httpResp.StatusCode != 201 {
 		log.Fatal("Unable to send public key to the server")
@@ -51,12 +56,26 @@ func main() {
 func defaultWorker() {
 	// This is the default work behavior implementation.
 	// Its core stands for executing one task at a time.
-	workerInstance := worker.LoadWorker()
-	setup(workerInstance.ServerEndPoint, workerInstance.Id)
-	workerInstance.Subscribe()
+	log.Println("Starting reading configuration process")
+	file, err := os.Open(os.Getenv(ConfFilePathKey))
+
+	if err != nil {
+		log.Fatal("Error on opening configuration file", err.Error())
+	}
+
+	defer file.Close()
+
+	workerInstance := worker.ParseWorkerConfiguration(file)
+
+	serverEndpoint := os.Getenv(ServerEndpointKey)
+
+	setup(serverEndpoint, workerInstance.Id)
+
+	workerInstance.Subscribe(serverEndpoint)
+
 	for {
 		if !isTokenValid(workerInstance.Token) {
-			workerInstance.Subscribe()
+			workerInstance.Subscribe(serverEndpoint)
 		}
 	}
 }

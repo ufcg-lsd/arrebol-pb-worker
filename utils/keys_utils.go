@@ -16,10 +16,10 @@ const (
 	KeysPathKey = "KEYS_PATH"
 )
 
-func Gen(id string) {
+func GenAccessKeys(id string) {
 	keyspath := os.Getenv(KeysPathKey)
-	savePrivateFileTo := keyspath + "/" + id + ".priv"
-	savePublicFileTo := keyspath + "/" + id + ".pub"
+	privateKeyPath := keyspath + "/" + id + ".priv"
+	publicKeyPath := keyspath + "/" + id + ".pub"
 	bitSize := 4096
 
 	privateKey, err := GeneratePrivateKey(bitSize)
@@ -29,12 +29,12 @@ func Gen(id string) {
 
 	privateKeyBytes, publicKeyBytes := encodeKeysToPem(privateKey, &privateKey.PublicKey)
 
-	err = writeKeyToFile(privateKeyBytes, savePrivateFileTo)
+	err = writeKeyToFile(privateKeyBytes, privateKeyPath)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 
-	err = writeKeyToFile([]byte(publicKeyBytes), savePublicFileTo)
+	err = writeKeyToFile(publicKeyBytes, publicKeyPath)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -42,13 +42,13 @@ func Gen(id string) {
 
 func GetPrivateKey(id string) *rsa.PrivateKey {
 	keyspath := os.Getenv(KeysPathKey)
-	readPrivKey, err := ioutil.ReadFile(keyspath + "/" + id + ".priv")
+	keyContent, err := ioutil.ReadFile(keyspath + "/" + id + ".priv")
 
 	if err != nil {
 		log.Fatal("The private key is not where it should be")
 	}
 
-	pemDecodedPrivKey, rest := pem.Decode(readPrivKey)
+	pemDecodedPrivKey, rest := pem.Decode(keyContent)
 
 	if len(rest) > 0 {
 		log.Fatal("Error on decoding private key; the rest is not empty.")
@@ -94,12 +94,12 @@ func VerifySignature(key *rsa.PublicKey, hash []byte, signature []byte) bool {
 
 func GetPublicKey(id string) *rsa.PublicKey {
 	keyspath := os.Getenv(KeysPathKey)
-	readPubKey, err := ioutil.ReadFile(keyspath  + "/" + id + ".pub")
+	keyContent, err := ioutil.ReadFile(keyspath  + "/" + id + ".pub")
 	if err != nil {
 		log.Fatal("The public key is not where it should be")
 	}
 
-	pemDecodedPubKey, rest := pem.Decode(readPubKey)
+	pemDecodedPubKey, rest := pem.Decode(keyContent)
 
 	if len(rest) > 0 {
 		log.Fatal("Error on decoding public key; the rest is not empty.")

@@ -28,7 +28,7 @@ func TestModule(t *testing.T) {
 
 func getPublicKey(t *testing.T) {
 	//setup
-	Gen(WorkerId)
+	GenAccessKeys(WorkerId)
 
 	//exercise
 	publicKey := GetPublicKey(WorkerId)
@@ -41,7 +41,7 @@ func getPublicKey(t *testing.T) {
 
 func getPrivateKey(t *testing.T) {
 	//setup
-	Gen(WorkerId)
+	GenAccessKeys(WorkerId)
 
 	//exercise
 	privateKey := GetPrivateKey(WorkerId)
@@ -54,7 +54,7 @@ func getPrivateKey(t *testing.T) {
 
 func signMessage(t *testing.T) {
 	//setup
-	Gen(WorkerId)
+	GenAccessKeys(WorkerId)
 
 	mockedData := make(map[string]string)
 

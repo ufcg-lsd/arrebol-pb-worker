@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	pbWorkerTestInstance = PBWorker{
+	pbWorkerTestInstance = Worker{
 		ServerEndPoint: "http://localhost:8000/v1",
 		Vcpu:           "1",
 		Ram:            "3",
