@@ -22,6 +22,7 @@ type HttpResponse struct {
 	StatusCode int
 }
 
+// It send an http post to the endpoint signing the body with the worker's private key
 func SignedPost(workerId string, body interface{}, endpoint string) *HttpResponse{
 	requestBody, err := json.Marshal(body)
 
@@ -35,14 +36,16 @@ func SignedPost(workerId string, body interface{}, endpoint string) *HttpRespons
 	return Post(&map[string][]byte{"data": data, "hashSum": hashSum}, endpoint)
 }
 
-// It send an http post to the endpoint signing the body with the worker's private key
 func Post(body interface{}, endpoint string) *HttpResponse{
 	requestBody, err := json.Marshal(body)
+
+	if err != nil {
+		log.Fatal("Unable to marshal body")
+	}
 
 	req, err := http.NewRequest(http.MethodPost, endpoint, bytes.NewBuffer(requestBody))
 
 	if err != nil {
-		// handle error
 		log.Fatal(err)
 	}
 
