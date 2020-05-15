@@ -21,6 +21,7 @@ type Worker struct {
 	//The Ram available to the worker instance
 	Ram            float32
 	//The Token that the server has been assigned to the worker
+	//so it is able to authenticate in next requests
 	Token          string
 	//The worker instance id
 	Id             string
