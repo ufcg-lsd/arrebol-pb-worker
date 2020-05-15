@@ -1,10 +1,7 @@
 {
-  "serverEndPoint": "",
-  "vcpu": "",
-  "ram": "",
-  "image": "",
-  "address": "",
-  "id"     : "",
+  "vcpu": 1,
+  "ram": 2,
+  "id"     : "test-id",
   #optional
-  "queue_id": ""
+  "queue_id": "queue-test-id"
 }

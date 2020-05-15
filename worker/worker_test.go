@@ -8,9 +8,9 @@ import (
 )
 
 var (
-	pbWorkerTestInstance = Worker{
-		Vcpu:           "1",
-		Ram:            "3",
+	workerTestInstance = Worker{
+		Vcpu:           1,
+		Ram:            3,
 		Token:          "test-token",
 		Id:             "1023",
 		QueueId:        "0932",
@@ -18,7 +18,7 @@ var (
 )
 
 func TestParseWorkerConfiguration(t *testing.T) {
-	testingWorkerAsByte, err := json.Marshal(pbWorkerTestInstance)
+	testingWorkerAsByte, err := json.Marshal(workerTestInstance)
 
 	if err != nil {
 		t.Errorf("Error on bytefying test worker")
@@ -26,7 +26,7 @@ func TestParseWorkerConfiguration(t *testing.T) {
 
 	parsedWorker := ParseWorkerConfiguration(bytes.NewReader(testingWorkerAsByte))
 
-	if parsedWorker != pbWorkerTestInstance {
+	if parsedWorker != workerTestInstance {
 		t.Errorf("The parsed worked is different from the expected one")
 	}
 }
@@ -39,14 +39,14 @@ func TestHandleSubscriptionResponse(t *testing.T) {
 	bodyAsByte, _ := json.Marshal(body)
 
 	//exercise
-	HandleSubscriptionResponse(&utils.HttpResponse{Body: bodyAsByte, StatusCode: 201}, &pbWorkerTestInstance)
+	HandleJoinResponse(&utils.HttpResponse{Body: bodyAsByte, StatusCode: 201}, &workerTestInstance)
 
 	//verification
-	if pbWorkerTestInstance.QueueId != "192038" {
+	if workerTestInstance.QueueId != "192038" {
 		t.Errorf("QueueId is not the expected one")
 	}
 
-	if pbWorkerTestInstance.Token != "test-token" {
+	if workerTestInstance.Token != "test-token" {
 		t.Errorf("The token is not the expected one")
 	}
 }

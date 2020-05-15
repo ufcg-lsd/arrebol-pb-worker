@@ -1,5 +1,10 @@
 package utils
-
+//This module handles with all operations related to keys: generation, retrieval
+//and messages signature. The last two ones are really needed by the system,
+//once they are part of its features. The first one could be addressed in deployment
+//time, when the user could use his own keys. The problem with this approach, is that
+//it is needed a specific format of keys, whose generation process is not user friendly.
+//So, generating them here, makes the deployment easier.
 import (
 	"crypto"
 	"crypto/rand"

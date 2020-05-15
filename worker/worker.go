@@ -7,20 +7,33 @@ import (
 	"log"
 )
 
+//It represents each one of the worker's instances that will run on the worker node.
+//The informations kept in this struct are important to the
+//communication process with the server. While the Vcpu and Ram allow the server
+//to choose better which tasks to dispatch to the worker instance, the Token, the Id
+//and the QueueId are indispensable to establish the communication.
+//Note: the Token is only SET when the worker joins the server.
+//The QueueId can be SET during a join or in the worker's conf file.
+//The others are set in the conf file.
 type Worker struct {
-	Vcpu           string
-	Ram            string
+	//The Vcpu available to the worker instance
+	Vcpu          float32
+	//The Ram available to the worker instance
+	Ram            float32
+	//The Token that the server has been assigned to the worker
 	Token          string
+	//The worker instance id
 	Id             string
+	//The queue from which the worker must ask for tasks
 	QueueId        string
 }
 
-func (w *Worker) Subscribe(serverEndpoint string) {
+func (w *Worker) Join(serverEndpoint string) {
 	httpResponse := utils.SignedPost(w.Id, w, serverEndpoint + "/workers")
-	HandleSubscriptionResponse(httpResponse, w)
+	HandleJoinResponse(httpResponse, w)
 }
 
-func HandleSubscriptionResponse(response *utils.HttpResponse, w *Worker) {
+func HandleJoinResponse(response *utils.HttpResponse, w *Worker) {
 	if response.StatusCode != 201 {
 		log.Fatal("The work could not be subscribed")
 	}

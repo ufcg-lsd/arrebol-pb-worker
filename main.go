@@ -10,18 +10,18 @@ import (
 )
 
 const (
-	ConfFilePathKey = "CONF_FILE"
+	ConfFilePathKey = "CONF_FILE_PATH"
 	ServerEndpointKey = "SERVER_ENDPOINT"
 )
 
-func setup(serverEndPoint string, workerId string) {
-	// The setup routine is responsible for generates the rsa key pairs
-	// of the worker and to send the public part to the server.
+func generateKeys(workerId string) {
 	log.Println("Starting to gen rsa key pair with workerid: " + workerId)
-
 	utils.GenAccessKeys(workerId)
+}
 
-	log.Println("Sending pub key to the server")
+//This functions sends the worker's public key to the server
+func sendKey(serverEndPoint string, workerId string) {
+	log.Println("Sending pub key to the server. ServerEndpoint: " + serverEndPoint)
 	url := serverEndPoint + "/workers/publicKey"
 	requestBody := &map[string]*rsa.PublicKey{"key": utils.GetPublicKey(workerId)}
 	httpResp := utils.Post(requestBody, url)
@@ -32,7 +32,7 @@ func setup(serverEndPoint string, workerId string) {
 }
 
 func isTokenValid(token string) bool {
-	return true
+	return false
 }
 
 func main() {
@@ -69,13 +69,13 @@ func defaultWorker() {
 
 	serverEndpoint := os.Getenv(ServerEndpointKey)
 
-	setup(serverEndpoint, workerInstance.Id)
-
-	workerInstance.Subscribe(serverEndpoint)
+	//before join the server, the worker must send its public key
+	generateKeys(workerInstance.Id)
+	sendKey(serverEndpoint, workerInstance.Id)
 
 	for {
 		if !isTokenValid(workerInstance.Token) {
-			workerInstance.Subscribe(serverEndpoint)
+			workerInstance.Join(serverEndpoint)
 		}
 	}
 }
