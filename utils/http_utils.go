@@ -66,3 +66,29 @@ func Post(body interface{}, endpoint string) *HttpResponse{
 
 	return &HttpResponse{Body: respBody, Headers: resp.Header, StatusCode: resp.StatusCode}
 }
+
+func Get(endpoint string, header http.Header) (*HttpResponse, error){
+	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
+
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header = header
+
+	resp, err := Client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	respBody, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		log.Println("The following error occurred on parsing response body: " + err.Error())
+		return &HttpResponse{nil, resp.Header, resp.StatusCode}, err
+	}
+
+	return &HttpResponse{Body: respBody, Headers: resp.Header, StatusCode: resp.StatusCode}, nil
+}

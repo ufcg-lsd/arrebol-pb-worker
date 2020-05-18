@@ -2,9 +2,11 @@ package worker
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/ufcg-lsd/arrebol-pb-worker/utils"
 	"io"
 	"log"
+	"net/http"
 )
 
 //It represents each one of the worker's instances that will run on the worker node.
@@ -27,6 +29,24 @@ type Worker struct {
 	Id             string
 	//The queue from which the worker must ask for tasks
 	QueueId        string
+}
+
+type TaskState uint8
+
+const (
+	TaskPending TaskState = iota
+	TaskRunning
+	TaskFinished
+	TaskFailed
+)
+
+type Task struct {
+	Commands       []string
+	ReportInterval int64
+	State          TaskState
+	Progress       int
+	Image string
+	Id string
 }
 
 func (w *Worker) Join(serverEndpoint string) {
@@ -60,6 +80,52 @@ func HandleJoinResponse(response *utils.HttpResponse, w *Worker) {
 
 	w.Token = token
 	w.QueueId = queueId
+}
+
+func (w *Worker) CheckAuthentication() error {
+	err := utils.CheckToken(w.Token)
+	if err != nil{
+		return errors.New("The worker is not properly authenticated, " +
+			"the token is invalid: " + err.Error())
+	}
+
+	if w.QueueId == "" {
+		return errors.New("The worker is not properly authenticated, the QueueId is empty")
+	}
+
+	return nil
+}
+
+func (w *Worker) GetTask(serverEndPoint string) (*Task, error) {
+	log.Println("Starting GetTask routine")
+
+	err := w.CheckAuthentication()
+
+	if err != nil {
+		return nil, errors.New("Authentication error: " + err.Error())
+	}
+
+	url := serverEndPoint + "/workers/" + w.Id + "/queues/" + w.QueueId + "/tasks"
+
+	headers := http.Header{}
+	headers.Set("arrebol-worker-token", w.Token)
+
+	httpResp, err := utils.Get(url, headers)
+
+	if err != nil {
+		return nil, errors.New("Error on GET request: " + err.Error())
+	}
+
+	respBody := httpResp.Body
+
+	var task Task
+	err = json.Unmarshal(respBody, &task)
+
+	if err != nil {
+		return nil, errors.New("Error on unmarshalling the task: " + err.Error())
+	}
+
+	return &task, nil
 }
 
 func ParseWorkerConfiguration(reader io.Reader) Worker {
