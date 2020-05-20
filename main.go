@@ -69,13 +69,24 @@ func defaultWorker() {
 
 	serverEndpoint := os.Getenv(ServerEndpointKey)
 
-	//before join the server, the worker must send its public key
-	generateKeys(workerInstance.Id)
-	sendKey(serverEndpoint, workerInstance.Id)
-
-	for {
-		if !isTokenValid(workerInstance.Token) {
-			workerInstance.Join(serverEndpoint)
-		}
+	task := &worker.Task{
+		Commands:      	[]string{"echo 'bla'", "echo 'ble'"},
+		ReportInterval: 5,
+		State:          worker.TaskRunning,
+		Image:          "library/ubuntu",
+		Id:             "test",
 	}
+
+	workerInstance.ExecTask(task, serverEndpoint)
+
+
+	//before join the server, the worker must send its public key
+	//generateKeys(workerInstance.Id)
+	//sendKey(serverEndpoint, workerInstance.Id)
+
+	//for {
+	//	if !isTokenValid(workerInstance.Token) {
+	//		workerInstance.Join(serverEndpoint)
+	//	}
+	//}
 }

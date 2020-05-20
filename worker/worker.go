@@ -1,10 +1,14 @@
 package worker
 
 import (
+	"bytes"
 	"encoding/json"
 	"github.com/ufcg-lsd/arrebol-pb-worker/utils"
 	"io"
 	"log"
+	"net/http"
+	"os"
+	"time"
 )
 
 //It represents each one of the worker's instances that will run on the worker node.
@@ -28,6 +32,28 @@ type Worker struct {
 	//The queue from which the worker must ask for tasks
 	QueueId        string
 }
+
+type TaskState uint8
+
+const (
+	TaskPending TaskState = iota
+	TaskRunning
+	TaskFinished
+	TaskFailed
+)
+
+type Task struct {
+	Commands       []string
+	ReportInterval int64
+	State          TaskState
+	Progress       int
+	Image string
+	Id string
+}
+
+const (
+	WorkerNodeAddressKey = "WORKER_NODE_ADDRESS"
+)
 
 func (w *Worker) Join(serverEndpoint string) {
 	httpResponse := utils.SignedPost(w.Id, w, serverEndpoint + "/workers")
@@ -72,3 +98,78 @@ func ParseWorkerConfiguration(reader io.Reader) Worker {
 
 	return configuration
 }
+
+func (w *Worker) ExecTask(task *Task, serverEndPoint string) {
+	address := os.Getenv(WorkerNodeAddressKey)
+	client := utils.NewDockerClient(address)
+	taskExecutor := &TaskExecutor{Cli: *client}
+	endingChannel := make(chan interface{}, 1)
+	waitChannel := make(chan interface{}, 1)
+	spawnWarner := make(chan interface{}, 1)
+	reportChannels := []chan interface{}{endingChannel, waitChannel, spawnWarner}
+	go w.reportTask(task, taskExecutor, reportChannels, serverEndPoint)
+	err := taskExecutor.Execute(task, spawnWarner)
+	log.Println(err)
+	log.Println("Wrting in the endingCHannel")
+	endingChannel <- "done"
+	log.Println("Reading from the wait channel")
+	<-waitChannel
+	log.Println("Dieing")
+}
+
+func (w *Worker) reportTask(task *Task, executor *TaskExecutor, channels []chan interface{},serverEndPoint string) {
+	startTime := time.Now().Unix()
+	for {
+		log.Println("going to start select block")
+		select {
+		case <-channels[0]:
+			task.Progress = 100
+			//reportReq(w, task, serverEndPoint)
+			channels[1] <- "done"
+			return
+		default:
+			log.Println("default option has been chosen")
+			<-channels[2]
+			progress, err := executor.Track()
+
+			if err != nil {
+				log.Println(err)
+			}
+
+			task.Progress = progress
+
+			log.Println("progess: " + string(progress))
+
+			currentTime := time.Now().Unix()
+			if currentTime-startTime < task.ReportInterval {
+				time.Sleep(5 * time.Second)
+				continue
+			}
+
+			//reportReq(w, task, serverEndPoint)
+
+			startTime = currentTime
+		}
+	}
+}
+
+func reportReq(w *Worker, task *Task, serverEndPoint string) {
+	url := serverEndPoint + "/workers/" + w.Id + "/queues/" + w.QueueId + "/tasks"
+	requestBody, err := json.Marshal(task)
+
+	client := &http.Client{}
+	req, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(requestBody))
+	req.Header.Set("arrebol-worker-token", w.Token)
+
+	if err != nil {
+		// handle error
+		log.Fatal(err)
+	}
+
+	_, err = client.Do(req)
+	if err != nil {
+		// handle error
+		log.Fatal(err)
+	}
+}
+
