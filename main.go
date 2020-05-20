@@ -36,24 +36,16 @@ func isTokenValid(token string) bool {
 }
 
 func main() {
-	// this main function start the worker following the chosen implementation
-	// passed by arg in the cli. The defaultWorker is started if no arg has been received.
 	err := godotenv.Load()
 
 	if err != nil {
 		log.Println("No .env file found")
 	}
 
-	switch len(os.Args) {
-	case 2:
-		workerImpl := os.Args[1]
-		println(workerImpl)
-	default:
-		defaultWorker()
-	}
+	startWorker()
 }
 
-func defaultWorker() {
+func startWorker() {
 	// This is the default work behavior implementation.
 	// Its core stands for executing one task at a time.
 	log.Println("Starting reading configuration process")
