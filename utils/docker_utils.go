@@ -26,18 +26,9 @@ func NewDockerClient(host string) *client.Client {
 	if err := os.Setenv("DOCKER_HOST", host); err != nil {
 		log.Print(err)
 	}
+	log.Println("Starting docker client in host: " + host)
 	cli, _ := client.NewEnvClient()
 	return cli
-}
-
-func ListContainer(cli *client.Client) {
-	ctns, err := cli.ContainerList(context.Background(), types.ContainerListOptions{All: true})
-	if err != nil {
-		log.Fatal(err)
-	}
-	for _, container := range ctns {
-		fmt.Printf("%s %s\n", container.ID[:10], container.Image)
-	}
 }
 
 func CreateContainer(cli *client.Client, config ContainerConfig) (string, error) {
@@ -75,6 +66,7 @@ func RemoveContainer(cli *client.Client, id string) error {
 	return cli.ContainerRemove(ctx, id, types.ContainerRemoveOptions{})
 }
 
+//Iterates over the content and write each one to the destination file
 func Write(cli *client.Client, id string, content []string, dest string) error {
 	for _, c := range content {
 		c = strings.ReplaceAll(c, "'", "'\"'\"'")
