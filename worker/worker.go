@@ -1,7 +1,6 @@
 package worker
 
 import (
-	"bytes"
 	"encoding/json"
 	"github.com/ufcg-lsd/arrebol-pb-worker/utils"
 	"io"
@@ -21,16 +20,16 @@ import (
 //The others are set in the conf file.
 type Worker struct {
 	//The Vcpu available to the worker instance
-	Vcpu          float32
+	Vcpu float32
 	//The Ram available to the worker instance
-	Ram            float32
+	Ram float32
 	//The Token that the server has been assigned to the worker
 	//so it is able to authenticate in next requests
-	Token          string
+	Token string
 	//The worker instance id
-	Id             string
+	Id string
 	//The queue from which the worker must ask for tasks
-	QueueId        string
+	QueueId string
 }
 
 type TaskState uint8
@@ -47,8 +46,8 @@ type Task struct {
 	ReportInterval int64
 	State          TaskState
 	Progress       int
-	Image string
-	Id string
+	Image          string
+	Id             string
 }
 
 const (
@@ -56,7 +55,7 @@ const (
 )
 
 func (w *Worker) Join(serverEndpoint string) {
-	httpResponse := utils.SignedPost(w.Id, w, serverEndpoint + "/workers")
+	httpResponse := utils.SignedPost(w.Id, w, serverEndpoint+"/workers")
 	HandleJoinResponse(httpResponse, w)
 }
 
@@ -103,50 +102,60 @@ func (w *Worker) ExecTask(task *Task, serverEndPoint string) {
 	address := os.Getenv(WorkerNodeAddressKey)
 	client := utils.NewDockerClient(address)
 	taskExecutor := &TaskExecutor{Cli: *client}
+	// This channel is used to warn the report routine about task completion
 	endingChannel := make(chan interface{}, 1)
+	// This channel is used to keep the ExecTask alive
+	// until the last report is done
 	waitChannel := make(chan interface{}, 1)
+	// This channel is used to ping the report routine
+	// when the execution container is ready.
 	spawnWarner := make(chan interface{}, 1)
 	reportChannels := []chan interface{}{endingChannel, waitChannel, spawnWarner}
+
+	// The report routine must run concurrently with the execute one
 	go w.reportTask(task, taskExecutor, reportChannels, serverEndPoint)
+
 	err := taskExecutor.Execute(task, spawnWarner)
-	log.Println(err)
-	log.Println("Wrting in the endingCHannel")
+
+	if err != nil {
+		log.Println(err.Error())
+	}
+
 	endingChannel <- "done"
-	log.Println("Reading from the wait channel")
 	<-waitChannel
-	log.Println("Dieing")
 }
 
-func (w *Worker) reportTask(task *Task, executor *TaskExecutor, channels []chan interface{},serverEndPoint string) {
+func (w *Worker) reportTask(task *Task, executor *TaskExecutor, channels []chan interface{}, serverEndPoint string) {
+	// The report can only begin when the container
+	// is ready.
+	<-channels[2]
 	startTime := time.Now().Unix()
 	for {
-		log.Println("going to start select block")
 		select {
 		case <-channels[0]:
 			task.Progress = 100
-			//reportReq(w, task, serverEndPoint)
+			reportReq(w, task, serverEndPoint)
+			// Tell the ExecTask it can finish
 			channels[1] <- "done"
 			return
 		default:
-			log.Println("default option has been chosen")
-			<-channels[2]
-			progress, err := executor.Track()
+			executedCmdsLen, err := executor.Track()
 
 			if err != nil {
 				log.Println(err)
 			}
 
-			task.Progress = progress
+			task.Progress = executedCmdsLen * 100 / len(task.Commands)
 
-			log.Println("progess: " + string(progress))
+			log.Println("progess: " + string(task.Progress))
 
 			currentTime := time.Now().Unix()
 			if currentTime-startTime < task.ReportInterval {
-				time.Sleep(5 * time.Second)
+				time.Sleep(1 * time.Second)
 				continue
 			}
 
-			//reportReq(w, task, serverEndPoint)
+			reportReq(w, task, serverEndPoint)
 
 			startTime = currentTime
 		}
@@ -155,21 +164,13 @@ func (w *Worker) reportTask(task *Task, executor *TaskExecutor, channels []chan 
 
 func reportReq(w *Worker, task *Task, serverEndPoint string) {
 	url := serverEndPoint + "/workers/" + w.Id + "/queues/" + w.QueueId + "/tasks"
-	requestBody, err := json.Marshal(task)
 
-	client := &http.Client{}
-	req, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(requestBody))
-	req.Header.Set("arrebol-worker-token", w.Token)
+	header := http.Header{}
+	header.Set("arrebol-worker-token", w.Token)
 
-	if err != nil {
-		// handle error
-		log.Fatal(err)
-	}
+	resp, err := utils.Put(task, header, url)
 
-	_, err = client.Do(req)
-	if err != nil {
-		// handle error
-		log.Fatal(err)
+	if err != nil || resp.StatusCode != 200 {
+		log.Println("Error on reporting task: " + err.Error())
 	}
 }
-

@@ -3,6 +3,7 @@ package utils
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -17,13 +18,13 @@ var (
 )
 
 type HttpResponse struct {
-	Body []byte
-	Headers http.Header
+	Body       []byte
+	Headers    http.Header
 	StatusCode int
 }
 
 // It send an http post to the endpoint signing the body with the worker's private key
-func SignedPost(workerId string, body interface{}, endpoint string) *HttpResponse{
+func SignedPost(workerId string, body interface{}, endpoint string) *HttpResponse {
 	requestBody, err := json.Marshal(body)
 
 	if err != nil {
@@ -37,7 +38,7 @@ func SignedPost(workerId string, body interface{}, endpoint string) *HttpRespons
 	return Post(payload, endpoint)
 }
 
-func Post(body interface{}, endpoint string) *HttpResponse{
+func Post(body interface{}, endpoint string) *HttpResponse {
 	requestBody, err := json.Marshal(body)
 
 	if err != nil {
@@ -65,4 +66,34 @@ func Post(body interface{}, endpoint string) *HttpResponse{
 	}
 
 	return &HttpResponse{Body: respBody, Headers: resp.Header, StatusCode: resp.StatusCode}
+}
+
+func Put(body interface{}, headers http.Header, endpoint string) (*HttpResponse, error) {
+	requestBody, err := json.Marshal(body)
+
+	if err != nil {
+		return nil, errors.New("Unable to marshal body")
+	}
+
+	req, err := http.NewRequest(http.MethodPut, endpoint, bytes.NewBuffer(requestBody))
+
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header = headers
+	resp, err := Client.Do(req)
+
+	if err != nil {
+		return nil, errors.New("Unable to reach the server on endpoint: " + endpoint)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		return nil, errors.New("Error on parsing the body to byte")
+	}
+
+	return &HttpResponse{Body: respBody, Headers: resp.Header, StatusCode: resp.StatusCode}, nil
 }

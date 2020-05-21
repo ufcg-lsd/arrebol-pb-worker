@@ -9,11 +9,11 @@ import (
 
 var (
 	workerTestInstance = Worker{
-		Vcpu:           1,
-		Ram:            3,
-		Token:          "test-token",
-		Id:             "1023",
-		QueueId:        "0932",
+		Vcpu:    1,
+		Ram:     3,
+		Token:   "test-token",
+		Id:      "1023",
+		QueueId: "0932",
 	}
 )
 

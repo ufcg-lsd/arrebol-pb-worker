@@ -1,4 +1,5 @@
 package utils
+
 //This module handles with all operations related to keys: generation, retrieval
 //and messages signature. The last two ones are really needed by the system,
 //once they are part of its features. The first one could be addressed in deployment
@@ -57,8 +58,7 @@ func GetPrivateKey(id string) *rsa.PrivateKey {
 	return rsaKey
 }
 
-
-func decodeKey(keyName string)  *pem.Block {
+func decodeKey(keyName string) *pem.Block {
 	keyspath := os.Getenv(KeysPathKey)
 	keyContent, err := ioutil.ReadFile(keyspath + keyName)
 

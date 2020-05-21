@@ -1,28 +1,27 @@
 package worker
 
 import (
-"bytes"
-"fmt"
-"github.com/docker/docker/api/types/mount"
-"github.com/docker/docker/client"
+	"bytes"
+	"fmt"
+	"github.com/docker/docker/api/types/mount"
+	"github.com/docker/docker/client"
 	"github.com/ufcg-lsd/arrebol-pb-worker/utils"
 	"log"
 	"os"
 	"strconv"
-"strings"
+	"strings"
 )
 
 const (
-	TaskScriptExecutorFileName = "task-script-executor.sh"
+	TaskScriptExecutorFileName  = "task-script-executor.sh"
 	RunTaskScriptCommandPattern = "/bin/bash %s -d -tsf=%s"
-	DefaultWorkerDockerImage = "ubuntu"
+	DefaultWorkerDockerImage    = "ubuntu"
 )
 
 type TaskExecutor struct {
-	Cli     client.Client
+	Cli client.Client
 	Cid string
 }
-
 
 func (e *TaskExecutor) Execute(task *Task, containerSpawnWarner chan<- interface{}) error {
 	image := task.Image
@@ -44,13 +43,16 @@ func (e *TaskExecutor) Execute(task *Task, containerSpawnWarner chan<- interface
 	if err := e.send(task); err != nil {
 		return err
 	}
+	// It allows the system to know when the container
+	// is ready.
 	containerSpawnWarner <- "spawned"
 	if err := e.run(task.Id); err != nil {
+		task.State = TaskFailed
 		return err
 	}
-	//if err := e.stop(); err != nil {
-	//	return err
-	//}
+	if err := e.stop(); err != nil {
+		return err
+	}
 	task.State = TaskFinished
 	return nil
 }
@@ -82,7 +84,7 @@ func (e *TaskExecutor) initiate(config utils.ContainerConfig) error {
 
 	taskScriptExecutorPath := os.Getenv("BIN_PATH") + "/" + TaskScriptExecutorFileName
 
-	err = utils.Copy(&e.Cli, cid, taskScriptExecutorPath, "/arrebol/" + TaskScriptExecutorFileName)
+	err = utils.Copy(&e.Cli, cid, taskScriptExecutorPath, "/arrebol/"+TaskScriptExecutorFileName)
 
 	e.Cid = cid
 	return err
@@ -100,13 +102,13 @@ func (e *TaskExecutor) stop() error {
 func (e *TaskExecutor) send(task *Task) error {
 	taskScriptFileName := "task-id.ts"
 	rawCmdsStr := task.Commands
-	err := utils.Write(&e.Cli, e.Cid, rawCmdsStr, "/arrebol/" + taskScriptFileName)
+	err := utils.Write(&e.Cli, e.Cid, rawCmdsStr, "/arrebol/"+taskScriptFileName)
 	return err
 }
 
 func (e *TaskExecutor) run(taskId string) error {
 	taskScriptFilePath := "/arrebol/task-id.ts"
-	cmd := fmt.Sprintf(RunTaskScriptCommandPattern, "/arrebol/" + TaskScriptExecutorFileName, taskScriptFilePath)
+	cmd := fmt.Sprintf(RunTaskScriptCommandPattern, "/arrebol/"+TaskScriptExecutorFileName, taskScriptFilePath)
 	err := utils.Exec(&e.Cli, e.Cid, cmd)
 	return err
 }
@@ -122,8 +124,9 @@ func (e *TaskExecutor) Track() (int, error) {
 
 	if err != nil {
 		log.Println(err)
+		return 0, err
 	}
-	println(len(ec))
+
 	return len(ec), nil
 }
 
@@ -139,7 +142,6 @@ func (e *TaskExecutor) getExitCodes() ([]int8, error) {
 	exitCodesStr := strings.Split(content, "\r\n")
 	log.Println("ExitCodes String Array: ", exitCodesStr)
 	exitCodes := toIntArray(exitCodesStr)
-	log.Println(exitCodes)
 	return exitCodes, nil
 }
 
@@ -160,4 +162,3 @@ func isNotUTFNumber(r rune) bool {
 	}
 	return true
 }
-

@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	ConfFilePathKey = "CONF_FILE_PATH"
+	ConfFilePathKey   = "CONF_FILE_PATH"
 	ServerEndpointKey = "SERVER_ENDPOINT"
 )
 
@@ -70,7 +70,7 @@ func defaultWorker() {
 	serverEndpoint := os.Getenv(ServerEndpointKey)
 
 	task := &worker.Task{
-		Commands:      	[]string{"echo 'bla'", "echo 'ble'"},
+		Commands:       []string{"echo 'bla'", "echo 'ble'"},
 		ReportInterval: 5,
 		State:          worker.TaskRunning,
 		Image:          "library/ubuntu",
@@ -78,7 +78,6 @@ func defaultWorker() {
 	}
 
 	workerInstance.ExecTask(task, serverEndpoint)
-
 
 	//before join the server, the worker must send its public key
 	//generateKeys(workerInstance.Id)
