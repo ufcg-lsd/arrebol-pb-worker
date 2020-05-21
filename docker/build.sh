@@ -1,0 +1,1 @@
+sudo docker build --no-cache -f arrebol/worker/deploy/docker/Dockerfile -t ufcglsd/arrebol-worker:"${1-latest}" .
