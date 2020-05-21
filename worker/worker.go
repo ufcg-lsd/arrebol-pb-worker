@@ -29,6 +29,24 @@ type Worker struct {
 	QueueId        string
 }
 
+type TaskState uint8
+
+const (
+	TaskPending TaskState = iota
+	TaskRunning
+	TaskFinished
+	TaskFailed
+)
+
+type Task struct {
+	Commands       []string
+	ReportInterval int64
+	State          TaskState
+	Progress       int
+	Image          string
+	Id             string
+}
+
 func (w *Worker) Join(serverEndpoint string) {
 	httpResponse := utils.SignedPost(w.Id, w, serverEndpoint + "/workers")
 	HandleJoinResponse(httpResponse, w)
