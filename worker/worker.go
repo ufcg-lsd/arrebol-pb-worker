@@ -40,12 +40,30 @@ const (
 	TaskFailed
 )
 
+//This struct represents a task, the executable piece of the system.
 type Task struct {
+	// This array wraps the task's commands. Each positions of the array
+	// is a unix command.
 	Commands       []string
+	// This field stands for the the time interval in which
+	// the worker must report the task status for the server.
+	// It is measured in seconds.
 	ReportInterval int64
+	// A very intuitive field, that represents
+	// the current situation of the task and
+	// ease the understanding between the worker and the server
 	State          TaskState
+	// It is measured in percentage, meaning
+	// how much of the task has been processed yet.
+	// For example, if this field hols the value 50,
+	// it means that half of the task's commands have been
+	// ran.
 	Progress       int
+	// It is the docker image in which the task must
+	// be executed. (e.g library/ubuntu).
 	Image string
+	// The task Id is another field that aims
+	// ease the communication between the worker and the server
 	Id string
 }
 
@@ -82,27 +100,11 @@ func HandleJoinResponse(response *utils.HttpResponse, w *Worker) {
 	w.QueueId = queueId
 }
 
-func (w *Worker) CheckAuthentication() error {
-	err := utils.CheckToken(w.Token)
-	if err != nil{
-		return errors.New("The worker is not properly authenticated, " +
-			"the token is invalid: " + err.Error())
-	}
-
-	if w.QueueId == "" {
-		return errors.New("The worker is not properly authenticated, the QueueId is empty")
-	}
-
-	return nil
-}
-
 func (w *Worker) GetTask(serverEndPoint string) (*Task, error) {
 	log.Println("Starting GetTask routine")
 
-	err := w.CheckAuthentication()
-
-	if err != nil {
-		return nil, errors.New("Authentication error: " + err.Error())
+	if w.QueueId == "" {
+		return nil, errors.New("The QueueId must be set before getting a task")
 	}
 
 	url := serverEndPoint + "/workers/" + w.Id + "/queues/" + w.QueueId + "/tasks"
