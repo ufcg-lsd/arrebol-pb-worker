@@ -42,19 +42,15 @@ const (
 
 //This struct represents a task, the executable piece of the system.
 type Task struct {
-	// This array wraps a sequence of unix commands to be executed by the worker.
-	// Each position of the array corresponds to a command
+	// Sequence of unix command to be execute by the worker
 	Commands       []string
 	// Period (in seconds) between report status from the worker to the server
 	ReportInterval int64
 	State          TaskState
 	// Indication of task completion progress, ranging from 0 to 100
 	Progress       int
-	// It is the docker image in which the task must
-	// be executed. (e.g library/ubuntu:tag).
+	// Docker image used to execute the task (e.g library/ubuntu:tag).
 	DockerImage string
-	// The task Id is another field that aims
-	// ease the communication between the worker and the server
 	Id string
 }
 
