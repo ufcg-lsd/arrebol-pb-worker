@@ -70,8 +70,8 @@ func defaultWorker() {
 	sendKey(serverEndpoint, workerInstance.Id)
 
 	for {
-		err := utils.CheckToken(workerInstance.Token)
-		if err != nil {
+		isTokenValid := utils.CheckToken(workerInstance.Token)
+		if !isTokenValid {
 			workerInstance.Join(serverEndpoint)
 		}
 
