@@ -54,6 +54,10 @@ type Task struct {
 	Id string
 }
 
+func (ts TaskState) String() string {
+	return [...]string{"TaskPending ", "TaskRunning", "TaskFinished", "TaskFailed"}[ts]
+}
+
 func (w *Worker) Join(serverEndpoint string) {
 	httpResponse := utils.SignedPost(w.Id, w, serverEndpoint + "/workers")
 	HandleJoinResponse(httpResponse, w)
