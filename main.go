@@ -31,10 +31,6 @@ func sendKey(serverEndPoint string, workerId string) {
 	}
 }
 
-func isTokenValid(token string) bool {
-	return false
-}
-
 func main() {
 	err := godotenv.Load()
 
@@ -66,8 +62,21 @@ func startWorker() {
 	sendKey(serverEndpoint, workerInstance.Id)
 
 	for {
-		if !isTokenValid(workerInstance.Token) {
+		isTokenValid := utils.CheckToken(workerInstance.Token)
+		if !isTokenValid {
 			workerInstance.Join(serverEndpoint)
 		}
+
+		task, err := workerInstance.GetTask(serverEndpoint)
+
+		if err != nil {
+			//it will force the worker to Join again, if the error has occurred because of
+			//authentication issues. This is a work arround while the system doesn't have
+			//its own Error module that will allow it to identify the error type.
+			log.Println(err.Error())
+			continue
+		}
+
+		log.Println(task.Id)
 	}
 }
