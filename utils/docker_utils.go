@@ -1,5 +1,14 @@
 package utils
 
+//This file implements some functions that are usually called in sequence
+//to achieve some common results, some of them are listed below:
+//Create a container and let it ready: CheckImage; Pull; CreateContainer; StartContainer.
+//Copy a file from the host to the container: Copy.
+//To write some array of content to a file inside the container: Write.
+//To run a valid command inside the container: Exec
+//To kill/remove the container: StopContainer; RemoveContainer.
+//Note that the sequence above is usually ran to use the container for the most common purposes.
+
 import (
 	"context"
 	"fmt"
