@@ -1,5 +1,14 @@
 package worker
 
+//This module implements all steps needed in the task execution, as follows:
+//Init a container, which includes download the task's image; create and start the container;
+//move the executor script to the work dir inside the container.
+//Send the task commands as a file to the container
+//Execute the task, which includes invoking the executor script passing the commands file as
+//arg and keep tracking of the exit codes of each commands.
+//Track the execution, by retrieving how many commands have already been executed
+//Stop the container, which leads to the extinction of the container.
+
 import (
 	"bytes"
 	"fmt"
@@ -10,6 +19,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const (
@@ -31,13 +41,15 @@ func (e *TaskExecutor) Execute(task *Task, containerSpawnWarner chan<- interface
 	}
 	log.Println("Creating container with image: " + image)
 
+	containerName := task.Id + " " + string(time.Now().Second())
+
 	config := utils.ContainerConfig{
-		Name:   "",
+		Name:   containerName,
 		Image:  image,
 		Mounts: []mount.Mount{},
 	}
 
-	if err := e.initiate(config); err != nil {
+	if err := e.init(config); err != nil {
 		return err
 	}
 	if err := e.send(task); err != nil {
@@ -57,7 +69,7 @@ func (e *TaskExecutor) Execute(task *Task, containerSpawnWarner chan<- interface
 	return nil
 }
 
-func (e *TaskExecutor) initiate(config utils.ContainerConfig) error {
+func (e *TaskExecutor) init(config utils.ContainerConfig) error {
 	exists, err := utils.CheckImage(&e.Cli, config.Image)
 	if !exists {
 		if _, err = utils.Pull(&e.Cli, config.Image); err != nil {
@@ -99,6 +111,13 @@ func (e *TaskExecutor) stop() error {
 	return err
 }
 
+//It sends the task's commands to a file
+//inside the container.
+//Params:
+//task - the task whose commands will be sent
+//It returns:
+//1. an error if the task commands couldn't be sent
+//2. nil if no error happened
 func (e *TaskExecutor) send(task *Task) error {
 	taskScriptFileName := "task-id.ts"
 	rawCmdsStr := task.Commands
@@ -113,6 +132,11 @@ func (e *TaskExecutor) run(taskId string) error {
 	return err
 }
 
+//Tracks the task execution by counting
+//how many commands have already been executed.
+//It returns:
+//1. 0 and an error, if it couldn't access the .ec file in the container
+//2. The amount of executed commands and nil.
 func (e *TaskExecutor) Track() (int, error) {
 	err := utils.Exec(&e.Cli, e.Cid, "touch /arrebol/task-id.ts.ec")
 
