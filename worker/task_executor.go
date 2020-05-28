@@ -6,8 +6,7 @@ package worker
 //Send the task commands as a file to the container
 //Execute the task, which includes invoking the executor script passing the commands file as
 //arg and keep tracking of the exit codes of each commands.
-//Track the execution, by retrieving how many commands have already been executed
-//Stop the container, which leads to the extinction of the container.
+//Track the execution, by retrieving how many commands have already been executed.
 
 import (
 	"bytes"
@@ -62,9 +61,6 @@ func (e *TaskExecutor) Execute(task *Task, containerSpawnWarner chan<- interface
 		task.State = TaskFailed
 		return err
 	}
-	if err := e.stop(); err != nil {
-		return err
-	}
 	task.State = TaskFinished
 	return nil
 }
@@ -99,15 +95,6 @@ func (e *TaskExecutor) init(config utils.ContainerConfig) error {
 	err = utils.Copy(&e.Cli, cid, taskScriptExecutorPath, "/arrebol/"+TaskScriptExecutorFileName)
 
 	e.Cid = cid
-	return err
-}
-
-func (e *TaskExecutor) stop() error {
-	err := utils.StopContainer(&e.Cli, e.Cid)
-	if err != nil {
-		return err
-	}
-	err = utils.RemoveContainer(&e.Cli, e.Cid)
 	return err
 }
 
