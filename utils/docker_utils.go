@@ -192,7 +192,7 @@ func Exec(cli *client.Client, id, cmd string) error {
 //1. nil and an error if the id doesn't exists,
 //or if the file path is invalid.
 //2. The file content as byte array and nil otherwise.
-func Cat(cli *client.Client, id, path string) ([]byte, error) {
+func Read(cli *client.Client, id, path string) ([]byte, error) {
 	log.Printf("Getting content of file [%s]", path)
 	config := types.ExecConfig{
 		Tty:          true,
