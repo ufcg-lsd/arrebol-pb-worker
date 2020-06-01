@@ -136,9 +136,7 @@ func Write(cli *client.Client, id string, content []string, dest string) error {
 		c = strings.ReplaceAll(c, "'", "'\"'\"'")
 		cmd := fmt.Sprintf(`echo -E '%s' >> %s`, c, dest)
 		log.Printf("Writing [%s] on [%s] from Container [%s]", c, dest, id)
-		Exec(cli, id, cmd)
 		err := Exec(cli, id, cmd)
-
 		if err != nil {
 			return err
 		}

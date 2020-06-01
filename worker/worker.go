@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -157,7 +158,7 @@ func (w *Worker) ExecTask(task *Task, serverEndPoint string) {
 	err := taskExecutor.Execute(task, spawnWarner)
 
 	if err != nil {
-		log.Println(err.Error())
+		log.Fatal(err.Error())
 	}
 
 	endingChannel <- "done"
@@ -171,6 +172,7 @@ func (w *Worker) reportTask(task *Task, executor *TaskExecutor, channels []chan 
 	startTime := time.Now().Unix()
 	for {
 		select {
+		//in case the task is done
 		case <-channels[0]:
 			task.Progress = 100
 			reportReq(w, task, serverEndPoint)
@@ -186,7 +188,7 @@ func (w *Worker) reportTask(task *Task, executor *TaskExecutor, channels []chan 
 
 			task.Progress = executedCmdsLen * 100 / len(task.Commands)
 
-			log.Println("progess: " + string(task.Progress))
+			log.Println("progess: " + strconv.Itoa(task.Progress))
 
 			currentTime := time.Now().Unix()
 			if currentTime-startTime < task.ReportInterval {

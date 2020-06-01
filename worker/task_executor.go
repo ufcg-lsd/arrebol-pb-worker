@@ -36,8 +36,7 @@ func (e *TaskExecutor) Execute(task *Task, containerSpawnWarner chan<- interface
 	image := task.DockerImage
 
 	log.Println("Creating container with image: " + image)
-
-	containerName := task.Id + " " + string(time.Now().Second())
+	containerName := task.Id + strconv.Itoa(time.Now().Second())
 
 	config := utils.ContainerConfig{
 		Name:   containerName,
@@ -58,6 +57,8 @@ func (e *TaskExecutor) Execute(task *Task, containerSpawnWarner chan<- interface
 		task.State = TaskFailed
 		return err
 	}
+	//utils.StopContainer(&e.Cli, e.Cid)
+	//utils.RemoveContainer(&e.Cli, e.Cid)
 	task.State = TaskFinished
 	return nil
 }
