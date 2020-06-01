@@ -8,11 +8,7 @@
 # This flag does the execution not stop on non-zero exit code commands
 set +e
 
-<<<<<<< HEAD
-EXECUTION_DIR=/arrebol
-=======
 WORK_DIR=/arrebol
->>>>>>> master
 
 for i in "$@"
 do
@@ -39,35 +35,20 @@ fi
 
 TS_FILENAME=$(basename $__TASK_SCRIPT_FILEPATH)
 
-<<<<<<< HEAD
-__EXIT_CODES=$EXECUTION_DIR/$TS_FILENAME.ec
-rm $__EXIT_CODES
-touch $__EXIT_CODES
-
-__COMMANDS=$EXECUTION_DIR/$TS_FILENAME.cmds
-=======
 __EXIT_CODES=$WORK_DIR/$TS_FILENAME.ec
 rm $__EXIT_CODES
 touch $__EXIT_CODES
 
 __COMMANDS=$WORK_DIR/$TS_FILENAME.cmds
->>>>>>> master
 rm $__COMMANDS
 touch $__COMMANDS
 
 if [ -n "$DEBUG" ];
 then
-<<<<<<< HEAD
-	rm $EXECUTION_DIR/$TS_FILENAME.out
-	exec 1> $EXECUTION_DIR/$TS_FILENAME.out
-	rm $EXECUTION_DIR/$TS_FILENAME.err
-	exec 2> $EXECUTION_DIR/$TS_FILENAME.err
-=======
 	rm $WORK_DIR/$TS_FILENAME.out
 	exec 1> $WORK_DIR/$TS_FILENAME.out
 	rm $WORK_DIR/$TS_FILENAME.err
 	exec 2> $WORK_DIR/$TS_FILENAME.err
->>>>>>> master
 fi
 
 while IFS= read -r __line || [ -n "$__line" ]; do

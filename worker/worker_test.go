@@ -64,8 +64,6 @@ func TestHandleSubscriptionResponse(t *testing.T) {
 		t.Errorf("The token is not the expected one")
 	}
 }
-<<<<<<< HEAD
-=======
 
 func TestWorker_GetTask(t *testing.T) {
 	//setup
@@ -120,4 +118,3 @@ func TestWorker_GetTaskWithEmptyQueue(t *testing.T) {
 		t.Error("The expected error has not occurred")
 	}
 }
->>>>>>> master
