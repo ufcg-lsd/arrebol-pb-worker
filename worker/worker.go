@@ -40,6 +40,7 @@ const (
 	TaskFailed
 )
 
+
 //This struct represents a task, the executable piece of the system.
 type Task struct {
 	// Sequence of unix command to be execute by the worker
