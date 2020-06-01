@@ -34,7 +34,7 @@ type TaskExecutor struct {
 }
 
 func (e *TaskExecutor) Execute(task *Task, containerSpawnWarner chan<- interface{}) error {
-	image := task.Image
+	image := task.DockerImage
 
 	if image == "" {
 		return errors.New("The image is empty, but it is required")
@@ -144,7 +144,7 @@ func (e *TaskExecutor) Track() (int, error) {
 
 func (e *TaskExecutor) getExitCodes() ([]int8, error) {
 	ecFilePath := "/arrebol/task-id" + ".ts.ec"
-	dat, err := utils.Cat(&e.Cli, e.Cid, ecFilePath)
+	dat, err := utils.Read(&e.Cli, e.Cid, ecFilePath)
 	if err != nil {
 		return nil, err
 	}
