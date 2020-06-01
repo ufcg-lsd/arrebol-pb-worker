@@ -10,7 +10,6 @@ package worker
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
@@ -36,9 +35,6 @@ type TaskExecutor struct {
 func (e *TaskExecutor) Execute(task *Task, containerSpawnWarner chan<- interface{}) error {
 	image := task.DockerImage
 
-	if image == "" {
-		return errors.New("The image is empty, but it is required")
-	}
 	log.Println("Creating container with image: " + image)
 
 	containerName := task.Id + " " + string(time.Now().Second())
