@@ -31,29 +31,17 @@ func sendKey(serverEndPoint string, workerId string) {
 	}
 }
 
-func isTokenValid(token string) bool {
-	return false
-}
-
 func main() {
-	// this main function start the worker following the chosen implementation
-	// passed by arg in the cli. The defaultWorker is started if no arg has been received.
 	err := godotenv.Load()
 
 	if err != nil {
 		log.Println("No .env file found")
 	}
 
-	switch len(os.Args) {
-	case 2:
-		workerImpl := os.Args[1]
-		println(workerImpl)
-	default:
-		defaultWorker()
-	}
+	startWorker()
 }
 
-func defaultWorker() {
+func startWorker() {
 	// This is the default work behavior implementation.
 	// Its core stands for executing one task at a time.
 	log.Println("Starting reading configuration process")
@@ -73,9 +61,32 @@ func defaultWorker() {
 		Commands:       []string{"echo 'bla'", "echo 'ble'"},
 		ReportInterval: 5,
 		State:          worker.TaskRunning,
-		Image:          "library/ubuntu",
+		DockerImage:          "library/ubuntu",
 		Id:             "test",
 	}
+
+	//before join the server, the worker must send its public key
+	//generateKeys(workerInstance.Id)
+	//sendKey(serverEndpoint, workerInstance.Id)
+
+	//for {
+	//	isTokenValid := utils.CheckToken(workerInstance.Token)
+	//	if !isTokenValid {
+	//		workerInstance.Join(serverEndpoint)
+	//	}
+	//
+	//	task, err := workerInstance.GetTask(serverEndpoint)
+	//
+	//	if err != nil {
+	//		//it will force the worker to Join again, if the error has occurred because of
+	//		//authentication issues. This is a work arround while the system doesn't have
+	//		//its own Error module that will allow it to identify the error type.
+	//		log.Println(err.Error())
+	//		continue
+	//	}
+	//
+	//	log.Println(task.Id)
+	//}
 
 	workerInstance.ExecTask(task, serverEndpoint)
 

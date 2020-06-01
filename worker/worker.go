@@ -2,6 +2,7 @@ package worker
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/ufcg-lsd/arrebol-pb-worker/utils"
 	"io"
 	"log"
@@ -32,6 +33,9 @@ type Worker struct {
 	QueueId string
 }
 
+const (
+	WorkerNodeAddressKey = "WORKER_NODE_ADDRESS"
+)
 type TaskState uint8
 
 const (
@@ -41,18 +45,23 @@ const (
 	TaskFailed
 )
 
+//This struct represents a task, the executable piece of the system.
 type Task struct {
+	// Sequence of unix command to be execute by the worker
 	Commands       []string
+	// Period (in seconds) between report status from the worker to the server
 	ReportInterval int64
 	State          TaskState
+	// Indication of task completion progress, ranging from 0 to 100
 	Progress       int
-	Image          string
-	Id             string
+	// Docker image used to execute the task (e.g library/ubuntu:tag).
+	DockerImage string
+	Id string
 }
 
-const (
-	WorkerNodeAddressKey = "WORKER_NODE_ADDRESS"
-)
+func (ts TaskState) String() string {
+	return [...]string{"TaskPending ", "TaskRunning", "TaskFinished", "TaskFailed"}[ts]
+}
 
 func (w *Worker) Join(serverEndpoint string) {
 	httpResponse := utils.SignedPost(w.Id, w, serverEndpoint+"/workers")
@@ -85,6 +94,36 @@ func HandleJoinResponse(response *utils.HttpResponse, w *Worker) {
 
 	w.Token = token
 	w.QueueId = queueId
+}
+
+func (w *Worker) GetTask(serverEndPoint string) (*Task, error) {
+	log.Println("Starting GetTask routine")
+
+	if w.QueueId == "" {
+		return nil, errors.New("The QueueId must be set before getting a task")
+	}
+
+	url := serverEndPoint + "/workers/" + w.Id + "/queues/" + w.QueueId + "/tasks"
+
+	headers := http.Header{}
+	headers.Set("arrebol-worker-token", w.Token)
+
+	httpResp, err := utils.Get(url, headers)
+
+	if err != nil {
+		return nil, errors.New("Error on GET request: " + err.Error())
+	}
+
+	respBody := httpResp.Body
+
+	var task Task
+	err = json.Unmarshal(respBody, &task)
+
+	if err != nil {
+		return nil, errors.New("Error on unmarshalling the task: " + err.Error())
+	}
+
+	return &task, nil
 }
 
 func ParseWorkerConfiguration(reader io.Reader) Worker {
