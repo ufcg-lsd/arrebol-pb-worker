@@ -60,7 +60,21 @@ func (ts TaskState) String() string {
 }
 
 func (w *Worker) Join(serverEndpoint string) {
-	httpResponse := utils.SignedPost(w.Id, w, serverEndpoint + "/workers")
+	headers := http.Header{}
+	publicKey := utils.GetPublicKey(w.Id)
+	parsedKey, err := json.Marshal(publicKey)
+
+	if err != nil {
+		log.Fatal("error on marshalling public key")
+	}
+
+	headers.Set("PUBLIC-KEY", string(parsedKey))
+	httpResponse, err := utils.Post(w.Id, w, http.Header{}, serverEndpoint + "/workers")
+
+	if err != nil {
+		log.Fatal("Error on joining the server: " + err.Error())
+	}
+
 	HandleJoinResponse(httpResponse, w)
 }
 
@@ -104,7 +118,7 @@ func (w *Worker) GetTask(serverEndPoint string) (*Task, error) {
 	headers := http.Header{}
 	headers.Set("arrebol-worker-token", w.Token)
 
-	httpResp, err := utils.Get(url, headers)
+	httpResp, err := utils.Get(w.Id, url, headers)
 
 	if err != nil {
 		return nil, errors.New("Error on GET request: " + err.Error())
