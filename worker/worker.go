@@ -9,6 +9,10 @@ import (
 	"net/http"
 )
 
+const (
+	PUBLIC_KEY = "PUBLIC-KEY"
+)
+
 //It represents each one of the worker's instances that will run on the worker node.
 //The informations kept in this struct are important to the
 //communication process with the server. While the Vcpu and Ram allow the server
@@ -40,7 +44,6 @@ const (
 	TaskFailed
 )
 
-
 //This struct represents a task, the executable piece of the system.
 type Task struct {
 	// Sequence of unix command to be execute by the worker
@@ -68,8 +71,8 @@ func (w *Worker) Join(serverEndpoint string) {
 		log.Fatal("error on marshalling public key")
 	}
 
-	headers.Set("PUBLIC-KEY", string(parsedKey))
-	httpResponse, err := utils.Post(w.Id, w, http.Header{}, serverEndpoint + "/workers")
+	headers.Set(PUBLIC_KEY, string(parsedKey))
+	httpResponse, err := utils.Post(w.Id, w, headers, serverEndpoint + "/workers")
 
 	if err != nil {
 		log.Fatal("Error on joining the server: " + err.Error())

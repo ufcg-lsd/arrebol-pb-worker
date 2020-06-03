@@ -12,6 +12,10 @@ type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
+const (
+	SIGNATURE_KEY_PATTERN = "SIGNATURE"
+)
+
 var (
 	Client HTTPClient = &http.Client{}
 	GetSignature func(payload interface{}, workerId string) []byte = getSignature
@@ -30,14 +34,14 @@ func getSignature(payload interface{}, workerId string) []byte {
 		log.Fatal("Error on marshalling the payload")
 	}
 
-	signedPayload, _ := SignMessage(GetPrivateKey(workerId), parsedPayload)
+	signature, _ := SignMessage(GetPrivateKey(workerId), parsedPayload)
 
-	return signedPayload
+	return signature
 }
 
 func AddSignature(workerId string, payload interface{}, headers http.Header) http.Header {
 	signature := GetSignature(payload, workerId)
-	headers.Set("SIGNATURE", string(signature))
+	headers.Set(SIGNATURE_KEY_PATTERN, string(signature))
 	return headers
 }
 
