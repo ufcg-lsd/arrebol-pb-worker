@@ -46,11 +46,16 @@ func TestParseWorkerConfiguration(t *testing.T) {
 }
 
 func TestHandleSubscriptionResponse(t *testing.T) {
+	//setup
 	body := make(map[string]string)
 	body["arrebol-worker-token"] = "test-token"
-	body["queue_id"] = "192038"
+	body["QueueId"] = "192038"
 
 	bodyAsByte, _ := json.Marshal(body)
+
+	ParseToken = func(tokenStr string) (map[string]interface{}, error) {
+		return map[string]interface{}{"QueueId": "192038"}, nil
+	}
 
 	//exercise
 	HandleJoinResponse(&utils.HttpResponse{Body: bodyAsByte, StatusCode: 201}, &workerTestInstance)
