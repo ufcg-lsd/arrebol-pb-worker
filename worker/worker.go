@@ -3,10 +3,12 @@ package worker
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/ufcg-lsd/arrebol-pb-worker/utils"
 	"io"
 	"log"
 	"net/http"
+	"github.com/dgrijalva/jwt-go"
 )
 
 const (
@@ -42,6 +44,11 @@ const (
 	TaskRunning
 	TaskFinished
 	TaskFailed
+)
+
+var (
+	//for test purpose
+	ParseToken func(tokenStr string) (map[string]interface{}, error) = parseToken
 )
 
 //This struct represents a task, the executable piece of the system.
@@ -99,14 +106,20 @@ func HandleJoinResponse(response *utils.HttpResponse, w *Worker) {
 		log.Fatal("The token is not in the response body")
 	}
 
-	queueId, ok := parsedBody["queue_id"]
+	parsedToken, err := ParseToken(token)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	queueId, ok := parsedToken["QueueId"]
 
 	if !ok {
 		log.Fatal("The queue_id is not in the response body")
 	}
 
 	w.Token = token
-	w.QueueId = queueId
+	w.QueueId = fmt.Sprintf("%v", queueId)
 }
 
 func (w *Worker) GetTask(serverEndPoint string) (*Task, error) {
@@ -148,4 +161,20 @@ func ParseWorkerConfiguration(reader io.Reader) Worker {
 	}
 
 	return configuration
+}
+
+func parseToken(tokenStr string) (map[string]interface{}, error){
+	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+		return utils.GetPublicKey("server"), nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		return claims, nil
+	} else {
+		return nil, errors.New("Error on parsing token")
+	}
 }
