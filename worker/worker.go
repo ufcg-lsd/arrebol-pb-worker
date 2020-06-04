@@ -3,6 +3,7 @@ package worker
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/ufcg-lsd/arrebol-pb-worker/utils"
 	"io"
 	"log"
@@ -10,6 +11,11 @@ import (
 	"os"
 	"strconv"
 	"time"
+	"github.com/dgrijalva/jwt-go"
+)
+
+const (
+	PUBLIC_KEY = "PUBLIC-KEY"
 )
 
 //It represents each one of the worker's instances that will run on the worker node.
@@ -46,6 +52,11 @@ const (
 	TaskFailed
 )
 
+var (
+	//for test purpose
+	ParseToken func(tokenStr string) (map[string]interface{}, error) = parseToken
+)
+
 //This struct represents a task, the executable piece of the system.
 type Task struct {
 	// Sequence of unix command to be execute by the worker
@@ -65,7 +76,21 @@ func (ts TaskState) String() string {
 }
 
 func (w *Worker) Join(serverEndpoint string) {
-	httpResponse := utils.SignedPost(w.Id, w, serverEndpoint+"/workers")
+	headers := http.Header{}
+	publicKey := utils.GetPublicKey(w.Id)
+	parsedKey, err := json.Marshal(publicKey)
+
+	if err != nil {
+		log.Fatal("error on marshalling public key")
+	}
+
+	headers.Set(PUBLIC_KEY, string(parsedKey))
+	httpResponse, err := utils.Post(w.Id, w, headers, serverEndpoint + "/workers")
+
+	if err != nil {
+		log.Fatal("Error on joining the server: " + err.Error())
+	}
+
 	HandleJoinResponse(httpResponse, w)
 }
 
@@ -87,14 +112,20 @@ func HandleJoinResponse(response *utils.HttpResponse, w *Worker) {
 		log.Fatal("The token is not in the response body")
 	}
 
-	queueId, ok := parsedBody["queue_id"]
+	parsedToken, err := ParseToken(token)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	queueId, ok := parsedToken["QueueId"]
 
 	if !ok {
 		log.Fatal("The queue_id is not in the response body")
 	}
 
 	w.Token = token
-	w.QueueId = queueId
+	w.QueueId = fmt.Sprintf("%v", queueId)
 }
 
 func (w *Worker) GetTask(serverEndPoint string) (*Task, error) {
@@ -109,7 +140,7 @@ func (w *Worker) GetTask(serverEndPoint string) (*Task, error) {
 	headers := http.Header{}
 	headers.Set("arrebol-worker-token", w.Token)
 
-	httpResp, err := utils.Get(url, headers)
+	httpResp, err := utils.Get(w.Id, url, headers)
 
 	if err != nil {
 		return nil, errors.New("Error on GET request: " + err.Error())
@@ -209,9 +240,25 @@ func reportReq(w *Worker, task *Task, serverEndPoint string) {
 	header := http.Header{}
 	header.Set("arrebol-worker-token", w.Token)
 
-	resp, err := utils.Put(task, header, url)
+	resp, err := utils.Put(w.Id, task, header, url)
 
 	if err != nil || resp.StatusCode != 200 {
 		log.Println("Error on reporting task: " + err.Error())
+	}
+}
+
+func parseToken(tokenStr string) (map[string]interface{}, error){
+	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+		return utils.GetPublicKey("server"), nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		return claims, nil
+	} else {
+		return nil, errors.New("Error on parsing token")
 	}
 }

@@ -13,8 +13,13 @@ type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
+const (
+	SIGNATURE_KEY_PATTERN = "SIGNATURE"
+)
+
 var (
 	Client HTTPClient = &http.Client{}
+	GetSignature func(payload interface{}, workerId string) []byte = getSignature
 )
 
 type HttpResponse struct {
@@ -23,22 +28,29 @@ type HttpResponse struct {
 	StatusCode int
 }
 
-// It send an http post to the endpoint signing the body with the worker's private key
-func SignedPost(workerId string, body interface{}, endpoint string) *HttpResponse {
-	requestBody, err := json.Marshal(body)
+
+func getSignature(payload interface{}, workerId string) []byte {
+	parsedPayload, err := json.Marshal(payload)
 
 	if err != nil {
-		log.Fatal("Error on marshalling the request body")
+		log.Fatal("Error on marshalling the payload")
 	}
 
-	data, hashSum := SignMessage(GetPrivateKey(workerId), requestBody)
+	signature, _ := SignMessage(GetPrivateKey(workerId), parsedPayload)
 
-	payload := &map[string][]byte{"data": data, "hashSum": hashSum}
-
-	return Post(payload, endpoint)
+	return signature
 }
 
-func Post(body interface{}, endpoint string) *HttpResponse {
+func AddSignature(workerId string, payload interface{}, headers http.Header) http.Header {
+	signature := GetSignature(payload, workerId)
+	headers.Set(SIGNATURE_KEY_PATTERN, string(signature))
+	return headers
+}
+
+
+func Post(workerId string, body interface{}, headers http.Header, endpoint string) (*HttpResponse, error){
+	headers = AddSignature(workerId, body, headers)
+
 	requestBody, err := json.Marshal(body)
 
 	if err != nil {
@@ -46,29 +58,31 @@ func Post(body interface{}, endpoint string) *HttpResponse {
 	}
 
 	req, err := http.NewRequest(http.MethodPost, endpoint, bytes.NewBuffer(requestBody))
-
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
+
+	req.Header = headers
 
 	resp, err := Client.Do(req)
 
 	if err != nil {
-		log.Fatal("Unable to reach the server on endpoint: " + endpoint)
-		panic(err)
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	respBody, err := ioutil.ReadAll(resp.Body)
 
 	if err != nil {
-		log.Fatal("Error on parsing the body to byte")
+		return nil, err
 	}
 
-	return &HttpResponse{Body: respBody, Headers: resp.Header, StatusCode: resp.StatusCode}
+	return &HttpResponse{Body: respBody, Headers: resp.Header, StatusCode: resp.StatusCode}, nil
 }
 
-func Get(endpoint string, header http.Header) (*HttpResponse, error){
+func Get(workerId string, endpoint string, header http.Header) (*HttpResponse, error){
+	header = AddSignature(workerId, endpoint, header)
+
 	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
 
 	if err != nil {
@@ -94,7 +108,9 @@ func Get(endpoint string, header http.Header) (*HttpResponse, error){
 	return &HttpResponse{Body: respBody, Headers: resp.Header, StatusCode: resp.StatusCode}, nil
 }
 
-func Put(body interface{}, headers http.Header, endpoint string) (*HttpResponse, error) {
+func Put(workerId string, body interface{}, headers http.Header, endpoint string) (*HttpResponse, error) {
+	headers = AddSignature(workerId, body, headers)
+
 	requestBody, err := json.Marshal(body)
 
 	if err != nil {
