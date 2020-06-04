@@ -6,6 +6,7 @@ import (
 	"github.com/ufcg-lsd/arrebol-pb-worker/utils"
 	"github.com/ufcg-lsd/arrebol-pb-worker/worker"
 	"log"
+	"net/http"
 	"os"
 )
 
@@ -24,9 +25,10 @@ func sendKey(serverEndPoint string, workerId string) {
 	log.Println("Sending pub key to the server. ServerEndpoint: " + serverEndPoint)
 	url := serverEndPoint + "/workers/publicKey"
 	requestBody := &map[string]*rsa.PublicKey{"key": utils.GetPublicKey(workerId)}
-	httpResp := utils.Post(requestBody, url)
+	httpResp, err := utils.Post(workerId, requestBody, http.Header{}, url)
 
-	if httpResp.StatusCode != 201 {
+
+	if httpResp.StatusCode != 201 || err != nil {
 		log.Fatal("Unable to send public key to the server")
 	}
 }

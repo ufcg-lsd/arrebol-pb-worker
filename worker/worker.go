@@ -11,6 +11,10 @@ import (
 	"github.com/dgrijalva/jwt-go"
 )
 
+const (
+	PUBLIC_KEY = "PUBLIC-KEY"
+)
+
 //It represents each one of the worker's instances that will run on the worker node.
 //The informations kept in this struct are important to the
 //communication process with the server. While the Vcpu and Ram allow the server
@@ -47,7 +51,6 @@ var (
 	ParseToken func(tokenStr string) (map[string]interface{}, error) = parseToken
 )
 
-
 //This struct represents a task, the executable piece of the system.
 type Task struct {
 	// Sequence of unix command to be execute by the worker
@@ -67,7 +70,21 @@ func (ts TaskState) String() string {
 }
 
 func (w *Worker) Join(serverEndpoint string) {
-	httpResponse := utils.SignedPost(w.Id, w, serverEndpoint + "/workers")
+	headers := http.Header{}
+	publicKey := utils.GetPublicKey(w.Id)
+	parsedKey, err := json.Marshal(publicKey)
+
+	if err != nil {
+		log.Fatal("error on marshalling public key")
+	}
+
+	headers.Set(PUBLIC_KEY, string(parsedKey))
+	httpResponse, err := utils.Post(w.Id, w, headers, serverEndpoint + "/workers")
+
+	if err != nil {
+		log.Fatal("Error on joining the server: " + err.Error())
+	}
+
 	HandleJoinResponse(httpResponse, w)
 }
 
@@ -117,7 +134,7 @@ func (w *Worker) GetTask(serverEndPoint string) (*Task, error) {
 	headers := http.Header{}
 	headers.Set("arrebol-worker-token", w.Token)
 
-	httpResp, err := utils.Get(url, headers)
+	httpResp, err := utils.Get(w.Id, url, headers)
 
 	if err != nil {
 		return nil, errors.New("Error on GET request: " + err.Error())
