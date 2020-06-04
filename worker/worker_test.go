@@ -89,6 +89,11 @@ func TestWorker_GetTask(t *testing.T) {
 
 	utils.Client = &MockedClient{}
 
+	utils.GetSignature = func(payload interface{}, workerId string) []byte {
+		fakeSignature, _ := json.Marshal("FAKE-SIGNATURE")
+		return fakeSignature
+	}
+
 	//exercise
 	mockedTask, err := workerTestInstance.GetTask("http://test-server:8000/v1")
 
