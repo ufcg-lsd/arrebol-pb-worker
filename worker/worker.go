@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/ufcg-lsd/arrebol-pb-worker/utils"
 	"io"
 	"log"
@@ -11,7 +12,6 @@ import (
 	"os"
 	"strconv"
 	"time"
-	"github.com/dgrijalva/jwt-go"
 )
 
 const (
@@ -43,6 +43,7 @@ type Worker struct {
 const (
 	WorkerNodeAddressKey = "WORKER_NODE_ADDRESS"
 )
+
 type TaskState uint8
 
 const (
@@ -60,15 +61,15 @@ var (
 //This struct represents a task, the executable piece of the system.
 type Task struct {
 	// Sequence of unix command to be execute by the worker
-	Commands       []string
+	Commands []string
 	// Period (in seconds) between report status from the worker to the server
 	ReportInterval int64
 	State          TaskState
 	// Indication of task completion progress, ranging from 0 to 100
-	Progress       int
+	Progress int
 	// Docker image used to execute the task (e.g library/ubuntu:tag).
 	DockerImage string
-	Id string
+	Id          string
 }
 
 func (ts TaskState) String() string {
@@ -85,7 +86,7 @@ func (w *Worker) Join(serverEndpoint string) {
 	}
 
 	headers.Set(PUBLIC_KEY, string(parsedKey))
-	httpResponse, err := utils.Post(w.Id, w, headers, serverEndpoint + "/workers")
+	httpResponse, err := utils.Post(w.Id, w, headers, serverEndpoint+"/workers")
 
 	if err != nil {
 		log.Fatal("Error on joining the server: " + err.Error())
@@ -247,7 +248,7 @@ func reportReq(w *Worker, task *Task, serverEndPoint string) {
 	}
 }
 
-func parseToken(tokenStr string) (map[string]interface{}, error){
+func parseToken(tokenStr string) (map[string]interface{}, error) {
 	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
 		return utils.GetPublicKey("server"), nil
 	})

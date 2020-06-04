@@ -85,9 +85,9 @@ func TestWorker_GetTask(t *testing.T) {
 
 	GetDo = func() (*http.Response, error) {
 		resp := &http.Response{
-			StatusCode:       200,
-			Header:           nil,
-			Body:             body,
+			StatusCode: 200,
+			Header:     nil,
+			Body:       body,
 		}
 		return resp, nil
 	}

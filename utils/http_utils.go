@@ -18,7 +18,7 @@ const (
 )
 
 var (
-	Client HTTPClient = &http.Client{}
+	Client       HTTPClient                                        = &http.Client{}
 	GetSignature func(payload interface{}, workerId string) []byte = getSignature
 )
 
@@ -27,7 +27,6 @@ type HttpResponse struct {
 	Headers    http.Header
 	StatusCode int
 }
-
 
 func getSignature(payload interface{}, workerId string) []byte {
 	parsedPayload, err := json.Marshal(payload)
@@ -47,8 +46,7 @@ func AddSignature(workerId string, payload interface{}, headers http.Header) htt
 	return headers
 }
 
-
-func Post(workerId string, body interface{}, headers http.Header, endpoint string) (*HttpResponse, error){
+func Post(workerId string, body interface{}, headers http.Header, endpoint string) (*HttpResponse, error) {
 	headers = AddSignature(workerId, body, headers)
 
 	requestBody, err := json.Marshal(body)
@@ -80,7 +78,7 @@ func Post(workerId string, body interface{}, headers http.Header, endpoint strin
 	return &HttpResponse{Body: respBody, Headers: resp.Header, StatusCode: resp.StatusCode}, nil
 }
 
-func Get(workerId string, endpoint string, header http.Header) (*HttpResponse, error){
+func Get(workerId string, endpoint string, header http.Header) (*HttpResponse, error) {
 	header = AddSignature(workerId, endpoint, header)
 
 	req, err := http.NewRequest(http.MethodGet, endpoint, nil)

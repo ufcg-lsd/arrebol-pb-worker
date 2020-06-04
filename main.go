@@ -27,7 +27,6 @@ func sendKey(serverEndPoint string, workerId string) {
 	requestBody := &map[string]*rsa.PublicKey{"key": utils.GetPublicKey(workerId)}
 	httpResp, err := utils.Post(workerId, requestBody, http.Header{}, url)
 
-
 	if httpResp.StatusCode != 201 || err != nil {
 		log.Fatal("Unable to send public key to the server")
 	}

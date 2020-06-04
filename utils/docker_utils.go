@@ -265,7 +265,7 @@ func Pull(cli *client.Client, image string) (io.ReadCloser, error) {
 //It returns:
 //1. false and an error if the image is invalid
 //2. true and nil otherwise
-func CheckImage(cli *client.	Client, image string) (exist bool, err error) {
+func CheckImage(cli *client.Client, image string) (exist bool, err error) {
 	exist = false
 	_, _, err = cli.ImageInspectWithRaw(context.Background(), image)
 	if err == nil {

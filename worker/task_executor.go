@@ -57,8 +57,8 @@ func (e *TaskExecutor) Execute(task *Task, containerSpawnWarner chan<- interface
 		task.State = TaskFailed
 		return err
 	}
-	//utils.StopContainer(&e.Cli, e.Cid)
-	//utils.RemoveContainer(&e.Cli, e.Cid)
+	utils.StopContainer(&e.Cli, e.Cid)
+	utils.RemoveContainer(&e.Cli, e.Cid)
 	task.State = TaskFinished
 	return nil
 }
