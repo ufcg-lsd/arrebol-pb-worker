@@ -4,7 +4,7 @@ WORKDIR /go/src/github.com/ufcg-lsd/arrebol-pb-worker/
 
 RUN echo 'export PATH=$PATH:/usr/local/bin' >> ~/.bashrc
 
-COPY ./core ./
+COPY ./ ./
 
 WORKDIR /go/src/github.com/ufcg-lsd/arrebol-pb-worker/core
 
