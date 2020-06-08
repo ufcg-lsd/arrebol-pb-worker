@@ -6,7 +6,7 @@ RUN echo 'export PATH=$PATH:/usr/local/bin' >> ~/.bashrc
 
 COPY ./ ./
 
-WORKDIR /go/src/github.com/ufcg-lsd/arrebol-pb-worker/core
+WORKDIR /go/src/github.com/ufcg-lsd/arrebol-pb-worker/
 
 RUN go get -v
 RUN go install -v

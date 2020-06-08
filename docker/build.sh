@@ -1,1 +1,1 @@
-sudo docker build --no-cache -f arrebol/worker/deploy/docker/Dockerfile -t raonismaneoto/arrebol-worker:"${1-latest}" .
+sudo docker build --no-cache -f docker/Dockerfile -t raonismaneoto/arrebol-worker:"${1-latest}" .
