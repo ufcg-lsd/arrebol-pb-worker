@@ -28,7 +28,11 @@ func sendKey(serverEndPoint string, workerId string) {
 	httpResp, err := utils.Post(workerId, requestBody, http.Header{}, url)
 
 
-	if httpResp.StatusCode != 201 || err != nil {
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	if httpResp.StatusCode != 201 {
 		log.Fatal("Unable to send public key to the server")
 	}
 }
