@@ -174,65 +174,32 @@ func (w *Worker) ExecTask(task *Task, serverEndPoint string) {
 	address := os.Getenv(WorkerNodeAddressKey)
 	client := utils.NewDockerClient(address)
 	taskExecutor := &TaskExecutor{Cli: *client}
-	// This channel is used to warn the report routine about task completion
-	endingChannel := make(chan interface{}, 1)
-	// This channel is used to keep the ExecTask alive
-	// until the last report is done
-	waitChannel := make(chan interface{}, 1)
-	// This channel is used to ping the report routine
-	// when the execution container is ready.
-	spawnWarner := make(chan interface{}, 1)
-	reportChannels := []chan interface{}{endingChannel, waitChannel, spawnWarner}
 
-	// The report routine must run concurrently with the execute one
-	go w.reportTask(task, taskExecutor, reportChannels, serverEndPoint)
+	go taskExecutor.Execute(task)
 
-	err := taskExecutor.Execute(task, spawnWarner)
+	ticker := time.NewTicker(time.Duration(task.ReportInterval) * time.Second)
 
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-
-	endingChannel <- "done"
-	<-waitChannel
-}
-
-func (w *Worker) reportTask(task *Task, executor *TaskExecutor, channels []chan interface{}, serverEndPoint string) {
-	// The report can only begin when the container
-	// is ready.
-	<-channels[2]
-	startTime := time.Now().Unix()
 	for {
 		select {
-		//in case the task is done
-		case <-channels[0]:
-			task.Progress = 100
-			reportReq(w, task, serverEndPoint)
-			// Tell the ExecTask it can finish
-			channels[1] <- "done"
-			return
-		default:
-			executedCmdsLen, err := executor.Track()
-
-			if err != nil {
-				log.Println(err)
-			}
-
-			task.Progress = executedCmdsLen * 100 / len(task.Commands)
-
-			log.Println("progess: " + strconv.Itoa(task.Progress))
-
-			currentTime := time.Now().Unix()
-			if currentTime-startTime < task.ReportInterval {
-				time.Sleep(1 * time.Second)
-				continue
-			}
-
-			reportReq(w, task, serverEndPoint)
-
-			startTime = currentTime
+		case <- ticker.C:
+			w.reportTask(task, taskExecutor, serverEndPoint)
 		}
 	}
+
+}
+
+func (w *Worker) reportTask(task *Task, executor *TaskExecutor, serverEndPoint string) {
+	executedCmdsLen, err := executor.Track()
+
+	if err != nil {
+		log.Println(err)
+	}
+
+	task.Progress = executedCmdsLen * 100 / len(task.Commands)
+
+	log.Println("progess: " + strconv.Itoa(task.Progress))
+
+	reportReq(w, task, serverEndPoint)
 }
 
 func reportReq(w *Worker, task *Task, serverEndPoint string) {
