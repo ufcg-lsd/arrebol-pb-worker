@@ -176,22 +176,20 @@ func (w *Worker) ExecTask(task *Task, serverEndPoint string) {
 	client := utils.NewDockerClient(address)
 	taskExecutor := &TaskExecutor{Cli: *client}
 
-	errChannel := make(chan error)
-	go taskExecutor.Execute(task, errChannel)
+	stateChanges := make(chan TaskState)
+	go taskExecutor.Execute(task, stateChanges)
 
 	ticker := time.NewTicker(time.Duration(task.ReportInterval) * time.Second)
 
 	for {
 		select {
 		case <-ticker.C:
-			if task.State == TaskFinished {
-				ticker.Stop()
-				w.reportTask(task, taskExecutor, serverEndPoint)
-				return
-			}
 			w.reportTask(task, taskExecutor, serverEndPoint)
-		case err := <-errChannel:
-			log.Fatal(err)
+		case state := <-stateChanges:
+			task.State = state
+			ticker.Stop()
+			w.reportTask(task, taskExecutor, serverEndPoint)
+			return
 		}
 
 	}

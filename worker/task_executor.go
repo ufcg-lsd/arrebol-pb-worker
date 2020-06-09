@@ -32,7 +32,7 @@ type TaskExecutor struct {
 	Cid string
 }
 
-func (e *TaskExecutor) Execute(task *Task, errChannel chan<- error) {
+func (e *TaskExecutor) Execute(task *Task, statesChanges chan<- TaskState) {
 	image := task.DockerImage
 
 	log.Println("Creating container with image: " + image)
@@ -45,21 +45,23 @@ func (e *TaskExecutor) Execute(task *Task, errChannel chan<- error) {
 	}
 
 	if err := e.init(config); err != nil {
-		errChannel <- err
+		log.Println(err)
+		statesChanges <- TaskFailed
 		return
 	}
 	if err := e.send(task); err != nil {
-		errChannel <- err
+		log.Println(err)
+		statesChanges <- TaskFailed
 		return
 	}
 	if err := e.run(task.Id); err != nil {
-		task.State = TaskFailed
-		errChannel <- err
+		log.Println(err)
+		statesChanges <- TaskFailed
 		return
 	}
 	utils.StopContainer(&e.Cli, e.Cid)
 	utils.RemoveContainer(&e.Cli, e.Cid)
-	task.State = TaskFinished
+	statesChanges <- TaskFinished
 }
 
 func (e *TaskExecutor) init(config utils.ContainerConfig) error {
