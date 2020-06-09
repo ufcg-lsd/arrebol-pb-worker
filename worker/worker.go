@@ -85,8 +85,9 @@ func (w *Worker) Join(serverEndpoint string) {
 		log.Fatal("error on marshalling public key")
 	}
 
-	headers.Set(PUBLIC_KEY, string(parsedKey))
-	httpResponse, err := utils.Post(w.Id, w, headers, serverEndpoint+"/workers")
+	strPublicKey := fmt.Sprintf("%v", parsedKey)
+	headers.Set(PUBLIC_KEY, strPublicKey)
+	httpResponse, err := utils.Post(w.Id, w, headers, serverEndpoint + "/workers")
 
 	if err != nil {
 		log.Fatal("Error on joining the server: " + err.Error())
