@@ -87,7 +87,7 @@ func (w *Worker) Join(serverEndpoint string) {
 
 	strPublicKey := fmt.Sprintf("%v", parsedKey)
 	headers.Set(PUBLIC_KEY, strPublicKey)
-	httpResponse, err := utils.Post(w.Id, w, headers, serverEndpoint + "/workers")
+	httpResponse, err := utils.Post(w.Id, w, headers, serverEndpoint+"/workers")
 
 	if err != nil {
 		log.Fatal("Error on joining the server: " + err.Error())
@@ -183,14 +183,14 @@ func (w *Worker) ExecTask(task *Task, serverEndPoint string) {
 
 	for {
 		select {
-		case <- ticker.C:
+		case <-ticker.C:
 			if task.State == TaskFinished {
 				ticker.Stop()
 				w.reportTask(task, taskExecutor, serverEndPoint)
 				return
 			}
 			w.reportTask(task, taskExecutor, serverEndPoint)
-		case err := <- errChannel:
+		case err := <-errChannel:
 			log.Fatal(err)
 		}
 

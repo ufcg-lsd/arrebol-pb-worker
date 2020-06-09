@@ -32,7 +32,7 @@ type TaskExecutor struct {
 	Cid string
 }
 
-func (e *TaskExecutor) Execute(task *Task, errChannel chan<- error ) {
+func (e *TaskExecutor) Execute(task *Task, errChannel chan<- error) {
 	image := task.DockerImage
 
 	log.Println("Creating container with image: " + image)
