@@ -200,10 +200,8 @@ func Read(cli *client.Client, id, path string) ([]byte, error) {
 	}
 	rid, err := cli.ContainerExecCreate(context.Background(), id, config)
 	if err != nil {
-		log.Println(err)
-		log.Println("error on creating container exec")
+		log.Println("error on creating container exec" + err.Error())
 	}
-	log.Println(rid.ID)
 	hijack, err := cli.ContainerExecAttach(context.Background(), rid.ID, config)
 
 	if err != nil {

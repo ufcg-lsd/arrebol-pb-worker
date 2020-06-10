@@ -32,7 +32,7 @@ type TaskExecutor struct {
 	Cid string
 }
 
-func (e *TaskExecutor) Execute(task *Task, containerSpawnWarner chan<- interface{}) error {
+func (e *TaskExecutor) Execute(task *Task, statesChanges chan<- TaskState) {
 	image := task.DockerImage
 
 	log.Println("Creating container with image: " + image)
@@ -45,22 +45,23 @@ func (e *TaskExecutor) Execute(task *Task, containerSpawnWarner chan<- interface
 	}
 
 	if err := e.init(config); err != nil {
-		return err
+		log.Println(err)
+		statesChanges <- TaskFailed
+		return
 	}
 	if err := e.send(task); err != nil {
-		return err
+		log.Println(err)
+		statesChanges <- TaskFailed
+		return
 	}
-	// It allows the system to know when the container
-	// is ready.
-	containerSpawnWarner <- "spawned"
 	if err := e.run(task.Id); err != nil {
-		task.State = TaskFailed
-		return err
+		log.Println(err)
+		statesChanges <- TaskFailed
+		return
 	}
 	utils.StopContainer(&e.Cli, e.Cid)
 	utils.RemoveContainer(&e.Cli, e.Cid)
-	task.State = TaskFinished
-	return nil
+	statesChanges <- TaskFinished
 }
 
 func (e *TaskExecutor) init(config utils.ContainerConfig) error {

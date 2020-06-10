@@ -1,12 +1,10 @@
 package main
 
 import (
-	"crypto/rsa"
 	"github.com/joho/godotenv"
 	"github.com/ufcg-lsd/arrebol-pb-worker/utils"
 	"github.com/ufcg-lsd/arrebol-pb-worker/worker"
 	"log"
-	"net/http"
 	"os"
 )
 
@@ -18,18 +16,6 @@ const (
 func generateKeys(workerId string) {
 	log.Println("Starting to gen rsa key pair with workerid: " + workerId)
 	utils.GenAccessKeys(workerId)
-}
-
-//This functions sends the worker's public key to the server
-func sendKey(serverEndPoint string, workerId string) {
-	log.Println("Sending pub key to the server. ServerEndpoint: " + serverEndPoint)
-	url := serverEndPoint + "/workers/publicKey"
-	requestBody := &map[string]*rsa.PublicKey{"key": utils.GetPublicKey(workerId)}
-	httpResp, err := utils.Post(workerId, requestBody, http.Header{}, url)
-
-	if httpResp.StatusCode != 201 || err != nil {
-		log.Fatal("Unable to send public key to the server")
-	}
 }
 
 func main() {
@@ -58,9 +44,8 @@ func startWorker() {
 
 	serverEndpoint := os.Getenv(ServerEndpointKey)
 
-	//before join the server, the worker must send its public key
+	//before join the server, the worker must generate the keys
 	generateKeys(workerInstance.Id)
-	sendKey(serverEndpoint, workerInstance.Id)
 
 	for {
 		task, err := workerInstance.GetTask(serverEndpoint)

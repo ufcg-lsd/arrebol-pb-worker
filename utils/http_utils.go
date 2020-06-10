@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -42,7 +43,8 @@ func getSignature(payload interface{}, workerId string) []byte {
 
 func AddSignature(workerId string, payload interface{}, headers http.Header) http.Header {
 	signature := GetSignature(payload, workerId)
-	headers.Set(SIGNATURE_KEY_PATTERN, string(signature))
+	strSignature := fmt.Sprintf("%v", signature)
+	headers.Set(SIGNATURE_KEY_PATTERN, strSignature)
 	return headers
 }
 
