@@ -29,8 +29,8 @@ const (
 type Worker struct {
 	//The Vcpu available to the worker instance
 	Vcpu float32
-	//The Ram available to the worker instance
-	Ram float32
+	//The Ram available to the worker instance (MegaBytes)
+	Ram uint32
 	//The Token that the server has been assigned to the worker
 	//so it is able to authenticate in next requests
 	Token string
@@ -79,14 +79,14 @@ func (ts TaskState) String() string {
 func (w *Worker) Join(serverEndpoint string) {
 	headers := http.Header{}
 	publicKey := utils.GetPublicKey(w.Id)
-	parsedKey, err := json.Marshal(publicKey)
+	log.Println(publicKey)
+	parsedKey, err := utils.ExportRsaPublicKeyAsPemStr(publicKey)
 
 	if err != nil {
-		log.Fatal("error on marshalling public key")
+		log.Println("Error on parsing key to string " + err.Error())
 	}
-
-	strPublicKey := fmt.Sprintf("%v", parsedKey)
-	headers.Set(PUBLIC_KEY, strPublicKey)
+	log.Println(parsedKey)
+	headers.Set(PUBLIC_KEY, parsedKey)
 	httpResponse, err := utils.Post(w.Id, w, headers, serverEndpoint+"/workers")
 
 	if err != nil {
@@ -98,7 +98,7 @@ func (w *Worker) Join(serverEndpoint string) {
 
 func HandleJoinResponse(response *utils.HttpResponse, w *Worker) {
 	if response.StatusCode != 201 {
-		log.Fatal("The work could not be subscribed")
+		log.Fatal("The work could not be subscribed. Status Code: " + strconv.Itoa(response.StatusCode))
 	}
 
 	var parsedBody map[string]string
