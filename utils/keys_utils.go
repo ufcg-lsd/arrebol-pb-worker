@@ -12,8 +12,8 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -178,15 +178,15 @@ func saveKey(keyBytes []byte, filePath string) error {
 	return nil
 }
 
-func ExportRsaPublicKeyAsPemStr(pubkey *rsa.PublicKey) (string, error) {
-	pubkey_bytes := x509.MarshalPKCS1PublicKey(pubkey)
+func GetBase64PubKey(workerId string) (string, error) {
+	keyPath := os.Getenv(KeysPathKey) + "/" + workerId + ".pub"
+	publicKey,err := ioutil.ReadFile(keyPath)
 
-	pubkey_pem := pem.EncodeToMemory(
-		&pem.Block{
-			Type:  "RSA PUBLIC KEY",
-			Bytes: pubkey_bytes,
-		},
-	)
+	if err != nil {
+		return "", err
+	}
 
-	return fmt.Sprintf("%v", pubkey_pem), nil
+	encodedKey := base64.StdEncoding.EncodeToString(publicKey)
+
+	return encodedKey, nil
 }
