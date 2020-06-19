@@ -17,4 +17,8 @@ do
 	fi
 done
 
+hook_dir=$(dirname $0)
+cd $hook_dir
+go test ../../...
+exit $?
 
