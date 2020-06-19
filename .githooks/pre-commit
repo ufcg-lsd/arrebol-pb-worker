@@ -14,6 +14,7 @@ do
 			echo "The changed file are not in the expected go format"
 			exit 1
 		fi
+		rm /tmp/$file_basename
 	fi
 done
 
