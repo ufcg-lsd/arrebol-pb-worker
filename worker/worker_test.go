@@ -12,11 +12,11 @@ import (
 
 var (
 	workerTestInstance = Worker{
-		Vcpu:           1,
-		Ram:            3,
-		Token:          "test-token",
-		Id:             "1023",
-		QueueId:        "0932",
+		Vcpu:    1,
+		Ram:     3,
+		Token:   "test-token",
+		Id:      "1023",
+		QueueId: "0932",
 	}
 )
 
@@ -35,8 +35,9 @@ func TestParseWorkerConfiguration(t *testing.T) {
 	testingWorkerAsByte, err := json.Marshal(workerTestInstance)
 
 	if err != nil {
-		
-		 t.Errorf("Error on bytefying test worker")
+
+		t.Errorf("Error on bytefying test worker")
+
 	}
 
 	parsedWorker := ParseWorkerConfiguration(bytes.NewReader(testingWorkerAsByte))
@@ -86,9 +87,9 @@ func TestWorker_GetTask(t *testing.T) {
 
 	GetDo = func() (*http.Response, error) {
 		resp := &http.Response{
-			StatusCode:       200,
-			Header:           nil,
-			Body:             body,
+			StatusCode: 200,
+			Header:     nil,
+			Body:       body,
 		}
 		return resp, nil
 	}

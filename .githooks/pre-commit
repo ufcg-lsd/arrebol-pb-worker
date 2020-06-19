@@ -6,9 +6,10 @@ for file in $files_changed
 do
 	if [[ $file == *.go ]]
 	then
-		cp $file /tmp
-		go fmt /tmp/$file
-		if [[ $(diff $file /tmp/$file) != "" ]]
+		file_basename=$(basename $file)
+		cp $file /tmp/$file_basename
+		go fmt /tmp/$file_basename
+		if [[ $(diff $file /tmp/$file_basename) != "" ]]
 		then
 			echo "The changed file are not in the expected go format"
 			exit 1
