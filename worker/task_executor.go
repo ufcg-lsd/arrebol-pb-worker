@@ -36,7 +36,7 @@ func (e *TaskExecutor) Execute(task *Task, statesChanges chan<- TaskState) {
 	image := task.DockerImage
 
 	log.Println("Creating container with image: " + image)
-	containerName := task.Id + strconv.Itoa(time.Now().Second())
+	containerName := task.Id + "-" + strconv.Itoa(time.Now().Second())
 
 	config := utils.ContainerConfig{
 		Name:   containerName,
