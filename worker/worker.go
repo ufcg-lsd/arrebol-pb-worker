@@ -4,11 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/ufcg-lsd/arrebol-pb-worker/utils"
 	"io"
 	"log"
 	"net/http"
-	"github.com/dgrijalva/jwt-go"
+	"os"
+	"strconv"
+	"time"
 )
 
 const (
@@ -25,17 +28,21 @@ const (
 //The others are set in the conf file.
 type Worker struct {
 	//The Vcpu available to the worker instance
-	Vcpu          float32
+	Vcpu float32
 	//The Ram available to the worker instance
-	Ram            float32
+	Ram float32
 	//The Token that the server has been assigned to the worker
 	//so it is able to authenticate in next requests
-	Token          string
+	Token string
 	//The worker instance id
-	Id             string
+	Id string
 	//The queue from which the worker must ask for tasks
-	QueueId        string
+	QueueId string
 }
+
+const (
+	WorkerNodeAddressKey = "WORKER_NODE_ADDRESS"
+)
 
 type TaskState uint8
 
@@ -54,15 +61,15 @@ var (
 //This struct represents a task, the executable piece of the system.
 type Task struct {
 	// Sequence of unix command to be execute by the worker
-	Commands       []string
+	Commands []string
 	// Period (in seconds) between report status from the worker to the server
 	ReportInterval int64
 	State          TaskState
 	// Indication of task completion progress, ranging from 0 to 100
-	Progress       int
+	Progress int
 	// Docker image used to execute the task (e.g library/ubuntu:tag).
 	DockerImage string
-	Id string
+	Id          string
 }
 
 func (ts TaskState) String() string {
@@ -80,7 +87,7 @@ func (w *Worker) Join(serverEndpoint string) {
 
 	strPublicKey := fmt.Sprintf("%v", parsedKey)
 	headers.Set(PUBLIC_KEY, strPublicKey)
-	httpResponse, err := utils.Post(w.Id, w, headers, serverEndpoint + "/workers")
+	httpResponse, err := utils.Post(w.Id, w, headers, serverEndpoint+"/workers")
 
 	if err != nil {
 		log.Fatal("Error on joining the server: " + err.Error())
@@ -164,7 +171,58 @@ func ParseWorkerConfiguration(reader io.Reader) Worker {
 	return configuration
 }
 
-func parseToken(tokenStr string) (map[string]interface{}, error){
+func (w *Worker) ExecTask(task *Task, serverEndPoint string) {
+	address := os.Getenv(WorkerNodeAddressKey)
+	client := utils.NewDockerClient(address)
+	taskExecutor := &TaskExecutor{Cli: *client}
+
+	stateChanges := make(chan TaskState)
+	go taskExecutor.Execute(task, stateChanges)
+
+	ticker := time.NewTicker(time.Duration(task.ReportInterval) * time.Second)
+
+	for {
+		select {
+		case <-ticker.C:
+			w.sendTaskReport(task, taskExecutor, serverEndPoint)
+		case state := <-stateChanges:
+			task.State = state
+			ticker.Stop()
+			w.sendTaskReport(task, taskExecutor, serverEndPoint)
+			return
+		}
+
+	}
+}
+
+func (w *Worker) sendTaskReport(task *Task, executor *TaskExecutor, serverEndPoint string) {
+	updateTaskProgress(task, executor)
+
+	url := serverEndPoint + "/workers/" + w.Id + "/queues/" + w.QueueId + "/tasks"
+
+	header := http.Header{}
+	header.Set("arrebol-worker-token", w.Token)
+
+	resp, err := utils.Put(w.Id, task, header, url)
+
+	if err != nil || resp.StatusCode != 200 {
+		log.Println("Error on reporting task: " + err.Error())
+	}
+}
+
+func updateTaskProgress(task *Task, executor *TaskExecutor) {
+	executedCmdsLen, err := executor.Track()
+
+	if err != nil {
+		log.Println(err)
+	}
+
+	task.Progress = executedCmdsLen * 100 / len(task.Commands)
+
+	log.Println("progess: " + strconv.Itoa(task.Progress))
+}
+
+func parseToken(tokenStr string) (map[string]interface{}, error) {
 	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
 		return utils.GetPublicKey("server"), nil
 	})

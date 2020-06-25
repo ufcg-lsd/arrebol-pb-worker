@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	ConfFilePathKey = "CONF_FILE_PATH"
+	ConfFilePathKey   = "CONF_FILE_PATH"
 	ServerEndpointKey = "SERVER_ENDPOINT"
 )
 
@@ -58,6 +58,6 @@ func startWorker() {
 			continue
 		}
 
-		log.Println(task.Id)
+		workerInstance.ExecTask(task, serverEndpoint)
 	}
 }

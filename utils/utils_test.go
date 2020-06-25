@@ -19,7 +19,6 @@ func setup() {
 	}
 }
 
-
 func TestGetPublicKey(t *testing.T) {
 	//setup
 	setup()
@@ -65,7 +64,7 @@ func TestSignMessage(t *testing.T) {
 	signedWorker, hashSum := SignMessage(GetPrivateKey(WorkerId), marshalledData)
 
 	//verification
-	if ! VerifySignature(GetPublicKey(WorkerId), hashSum, signedWorker) {
+	if !VerifySignature(GetPublicKey(WorkerId), hashSum, signedWorker) {
 		t.Errorf("Signature verification doesnt match the specifications")
 	}
 }

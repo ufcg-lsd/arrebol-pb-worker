@@ -3,6 +3,7 @@ package utils
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -18,13 +19,13 @@ const (
 )
 
 var (
-	Client HTTPClient = &http.Client{}
+	Client       HTTPClient                                        = &http.Client{}
 	GetSignature func(payload interface{}, workerId string) []byte = getSignature
 )
 
 type HttpResponse struct {
-	Body []byte
-	Headers http.Header
+	Body       []byte
+	Headers    http.Header
 	StatusCode int
 }
 
@@ -47,7 +48,7 @@ func AddSignature(workerId string, payload interface{}, headers http.Header) htt
 	return headers
 }
 
-func Post(workerId string, body interface{}, headers http.Header, endpoint string) (*HttpResponse, error){
+func Post(workerId string, body interface{}, headers http.Header, endpoint string) (*HttpResponse, error) {
 	headers = AddSignature(workerId, body, headers)
 
 	requestBody, err := json.Marshal(body)
@@ -79,7 +80,7 @@ func Post(workerId string, body interface{}, headers http.Header, endpoint strin
 	return &HttpResponse{Body: respBody, Headers: resp.Header, StatusCode: resp.StatusCode}, nil
 }
 
-func Get(workerId string, endpoint string, header http.Header) (*HttpResponse, error){
+func Get(workerId string, endpoint string, header http.Header) (*HttpResponse, error) {
 	header = AddSignature(workerId, endpoint, header)
 
 	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
@@ -102,6 +103,38 @@ func Get(workerId string, endpoint string, header http.Header) (*HttpResponse, e
 	if err != nil {
 		log.Println("The following error occurred on parsing response body: " + err.Error())
 		return &HttpResponse{nil, resp.Header, resp.StatusCode}, err
+	}
+
+	return &HttpResponse{Body: respBody, Headers: resp.Header, StatusCode: resp.StatusCode}, nil
+}
+
+func Put(workerId string, body interface{}, headers http.Header, endpoint string) (*HttpResponse, error) {
+	headers = AddSignature(workerId, body, headers)
+
+	requestBody, err := json.Marshal(body)
+
+	if err != nil {
+		return nil, errors.New("Unable to marshal body")
+	}
+
+	req, err := http.NewRequest(http.MethodPut, endpoint, bytes.NewBuffer(requestBody))
+
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header = headers
+	resp, err := Client.Do(req)
+
+	if err != nil {
+		return nil, errors.New("Unable to reach the server on endpoint: " + endpoint)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		return nil, errors.New("Error on parsing the body to byte")
 	}
 
 	return &HttpResponse{Body: respBody, Headers: resp.Header, StatusCode: resp.StatusCode}, nil

@@ -8,7 +8,6 @@ package utils
 //To run a valid command inside the container: Exec
 //To kill/remove the container: StopContainer; RemoveContainer.
 //Note that the sequence above is usually ran to use the container for the most common purposes.
-
 import (
 	"context"
 	"fmt"
@@ -138,7 +137,6 @@ func Write(cli *client.Client, id string, content []string, dest string) error {
 		cmd := fmt.Sprintf(`echo -E '%s' >> %s`, c, dest)
 		log.Printf("Writing [%s] on [%s] from Container [%s]", c, dest, id)
 		err := Exec(cli, id, cmd)
-
 		if err != nil {
 			return err
 		}
@@ -202,10 +200,8 @@ func Read(cli *client.Client, id, path string) ([]byte, error) {
 	}
 	rid, err := cli.ContainerExecCreate(context.Background(), id, config)
 	if err != nil {
-		log.Println("error on creating container exec")
-		return nil, err
+		log.Println("error on creating container exec" + err.Error())
 	}
-	log.Println(rid.ID)
 	hijack, err := cli.ContainerExecAttach(context.Background(), rid.ID, config)
 
 	if err != nil {
@@ -267,7 +263,7 @@ func Pull(cli *client.Client, image string) (io.ReadCloser, error) {
 //It returns:
 //1. false and an error if the image is invalid
 //2. true and nil otherwise
-func CheckImage(cli *client.	Client, image string) (exist bool, err error) {
+func CheckImage(cli *client.Client, image string) (exist bool, err error) {
 	exist = false
 	_, _, err = cli.ImageInspectWithRaw(context.Background(), image)
 	if err == nil {
