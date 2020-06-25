@@ -184,32 +184,19 @@ func (w *Worker) ExecTask(task *Task, serverEndPoint string) {
 	for {
 		select {
 		case <-ticker.C:
-			w.reportTask(task, taskExecutor, serverEndPoint)
+			w.sendTaskReport(task, taskExecutor, serverEndPoint)
 		case state := <-stateChanges:
 			task.State = state
 			ticker.Stop()
-			w.reportTask(task, taskExecutor, serverEndPoint)
+			w.sendTaskReport(task, taskExecutor, serverEndPoint)
 			return
 		}
 
 	}
 }
 
-func (w *Worker) reportTask(task *Task, executor *TaskExecutor, serverEndPoint string) {
-	executedCmdsLen, err := executor.Track()
-
-	if err != nil {
-		log.Println(err)
-	}
-
-	task.Progress = executedCmdsLen * 100 / len(task.Commands)
-
-	log.Println("progess: " + strconv.Itoa(task.Progress))
-
-	reportReq(w, task, serverEndPoint)
-}
-
-func reportReq(w *Worker, task *Task, serverEndPoint string) {
+func (w *Worker) sendTaskReport(task *Task, executor *TaskExecutor, serverEndPoint string) {
+	updateTaskProgress(task, executor)
 	url := serverEndPoint + "/workers/" + w.Id + "/queues/" + fmt.Sprint(w.QueueId) + "/tasks"
 
 	header := http.Header{}
@@ -220,6 +207,18 @@ func reportReq(w *Worker, task *Task, serverEndPoint string) {
 	if err != nil || resp.StatusCode != 200 {
 		log.Println("Error on reporting task: " + err.Error())
 	}
+}
+
+func updateTaskProgress(task *Task, executor *TaskExecutor) {
+	executedCmdsLen, err := executor.Track()
+
+	if err != nil {
+		log.Println(err)
+	}
+
+	task.Progress = executedCmdsLen * 100 / len(task.Commands)
+
+	log.Println("progess: " + strconv.Itoa(task.Progress))
 }
 
 func parseToken(tokenStr string) (map[string]interface{}, error) {

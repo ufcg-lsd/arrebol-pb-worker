@@ -1,0 +1,25 @@
+#!/bin/bash
+
+files_changed=$(git status)
+
+for file in $files_changed
+do
+	if [[ $file == *.go ]]
+	then
+		file_basename=$(basename $file)
+		cp $file /tmp/$file_basename
+		go fmt /tmp/$file_basename
+		if [[ $(diff $file /tmp/$file_basename) != "" ]]
+		then
+			echo "The changed file are not in the expected go format"
+			exit 1
+		fi
+		rm /tmp/$file_basename
+	fi
+done
+
+hook_dir=$(dirname $0)
+cd $hook_dir
+go test ../../...
+exit $?
+
