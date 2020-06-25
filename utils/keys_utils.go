@@ -144,7 +144,7 @@ func EncodePrivKeyToPem(privKey *rsa.PrivateKey) []byte {
 	privDER := x509.MarshalPKCS1PrivateKey(privKey)
 
 	privBlock := pem.Block{
-		Type:    "RSA PUBLIC KEY",
+		Type:    "RSA PRIVATE KEY",
 		Headers: nil,
 		Bytes:   privDER,
 	}
