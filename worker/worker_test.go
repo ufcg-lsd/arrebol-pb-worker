@@ -35,7 +35,9 @@ func TestParseWorkerConfiguration(t *testing.T) {
 	testingWorkerAsByte, err := json.Marshal(workerTestInstance)
 
 	if err != nil {
+
 		t.Errorf("Error on bytefying test worker")
+
 	}
 
 	parsedWorker := ParseWorkerConfiguration(bytes.NewReader(testingWorkerAsByte))
