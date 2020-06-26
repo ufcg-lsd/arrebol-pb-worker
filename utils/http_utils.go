@@ -15,7 +15,7 @@ type HTTPClient interface {
 }
 
 const (
-	SIGNATURE_KEY_PATTERN = "SIGNATURE"
+	SIGNATURE_KEY_PATTERN = "Signature"
 )
 
 var (

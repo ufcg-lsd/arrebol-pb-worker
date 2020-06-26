@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	PUBLIC_KEY = "PUBLIC-KEY"
+	PUBLIC_KEY = "Public-Key"
 )
 
 //It represents each one of the worker's instances that will run on the worker node.
@@ -29,15 +29,16 @@ const (
 type Worker struct {
 	//The Vcpu available to the worker instance
 	Vcpu float32
-	//The Ram available to the worker instance
-	Ram float32
+	//The Ram available to the worker instance (MegaBytes)ls
+
+	Ram uint32
 	//The Token that the server has been assigned to the worker
 	//so it is able to authenticate in next requests
-	Token string
+	Token string `json:"-"`
 	//The worker instance id
 	Id string
 	//The queue from which the worker must ask for tasks
-	QueueId string
+	QueueId uint
 }
 
 const (
@@ -78,15 +79,14 @@ func (ts TaskState) String() string {
 
 func (w *Worker) Join(serverEndpoint string) {
 	headers := http.Header{}
-	publicKey := utils.GetPublicKey(w.Id)
-	parsedKey, err := json.Marshal(publicKey)
+
+	publicKey, err := utils.GetBase64PubKey(w.Id)
 
 	if err != nil {
-		log.Fatal("error on marshalling public key")
+		log.Fatal("Error on retrieving key as base64. " + err.Error())
 	}
 
-	strPublicKey := fmt.Sprintf("%v", parsedKey)
-	headers.Set(PUBLIC_KEY, strPublicKey)
+	headers.Set(PUBLIC_KEY, publicKey)
 	httpResponse, err := utils.Post(w.Id, w, headers, serverEndpoint+"/workers")
 
 	if err != nil {
@@ -98,7 +98,7 @@ func (w *Worker) Join(serverEndpoint string) {
 
 func HandleJoinResponse(response *utils.HttpResponse, w *Worker) {
 	if response.StatusCode != 201 {
-		log.Fatal("The work could not be subscribed")
+		log.Fatal("The work could not be subscribed. Status Code: " + strconv.Itoa(response.StatusCode))
 	}
 
 	var parsedBody map[string]string
@@ -127,17 +127,17 @@ func HandleJoinResponse(response *utils.HttpResponse, w *Worker) {
 	}
 
 	w.Token = token
-	w.QueueId = fmt.Sprintf("%v", queueId)
+	w.QueueId = queueId.(uint)
 }
 
 func (w *Worker) GetTask(serverEndPoint string) (*Task, error) {
 	log.Println("Starting GetTask routine")
 
-	if w.QueueId == "" {
+	if w.QueueId == 0 {
 		return nil, errors.New("The QueueId must be set before getting a task")
 	}
 
-	url := serverEndPoint + "/workers/" + w.Id + "/queues/" + w.QueueId + "/tasks"
+	url := serverEndPoint + "/workers/" + w.Id + "/queues/" + fmt.Sprint(w.QueueId) + "/tasks"
 
 	headers := http.Header{}
 	headers.Set("arrebol-worker-token", w.Token)
@@ -197,8 +197,7 @@ func (w *Worker) ExecTask(task *Task, serverEndPoint string) {
 
 func (w *Worker) sendTaskReport(task *Task, executor *TaskExecutor, serverEndPoint string) {
 	updateTaskProgress(task, executor)
-
-	url := serverEndPoint + "/workers/" + w.Id + "/queues/" + w.QueueId + "/tasks"
+	url := serverEndPoint + "/workers/" + w.Id + "/queues/" + fmt.Sprint(w.QueueId) + "/tasks"
 
 	header := http.Header{}
 	header.Set("arrebol-worker-token", w.Token)

@@ -12,6 +12,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"io/ioutil"
 	"log"
@@ -136,14 +137,25 @@ func GeneratePrivateKey(bitSize int) (*rsa.PrivateKey, error) {
 }
 
 func encodeKeysToPem(privateKey *rsa.PrivateKey, publicKey *rsa.PublicKey) ([]byte, []byte) {
-	privDER := x509.MarshalPKCS1PrivateKey(privateKey)
-	publicDER := x509.MarshalPKCS1PublicKey(publicKey)
-	// pem.Block
+	return EncodePrivKeyToPem(privateKey), EncodePublicKeyToPem(publicKey)
+}
+
+func EncodePrivKeyToPem(privKey *rsa.PrivateKey) []byte {
+	privDER := x509.MarshalPKCS1PrivateKey(privKey)
+
 	privBlock := pem.Block{
 		Type:    "RSA PRIVATE KEY",
 		Headers: nil,
 		Bytes:   privDER,
 	}
+
+	privPEM := pem.EncodeToMemory(&privBlock)
+
+	return privPEM
+}
+
+func EncodePublicKeyToPem(publicKey *rsa.PublicKey) []byte {
+	publicDER := x509.MarshalPKCS1PublicKey(publicKey)
 
 	publicBlock := pem.Block{
 		Type:    "RSA PUBLIC KEY",
@@ -151,11 +163,9 @@ func encodeKeysToPem(privateKey *rsa.PrivateKey, publicKey *rsa.PublicKey) ([]by
 		Bytes:   publicDER,
 	}
 
-	// Private key in PEM format
-	privatePEM := pem.EncodeToMemory(&privBlock)
 	publicPEM := pem.EncodeToMemory(&publicBlock)
 
-	return privatePEM, publicPEM
+	return publicPEM
 }
 
 func saveKey(keyBytes []byte, filePath string) error {
@@ -166,4 +176,17 @@ func saveKey(keyBytes []byte, filePath string) error {
 
 	log.Printf("Key saved to: %s", filePath)
 	return nil
+}
+
+func GetBase64PubKey(workerId string) (string, error) {
+	keyPath := os.Getenv(KeysPathKey) + "/" + workerId + ".pub"
+	publicKey,err := ioutil.ReadFile(keyPath)
+
+	if err != nil {
+		return "", err
+	}
+
+	encodedKey := base64.StdEncoding.EncodeToString(publicKey)
+
+	return encodedKey, nil
 }

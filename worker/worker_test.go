@@ -16,7 +16,7 @@ var (
 		Ram:     3,
 		Token:   "test-token",
 		Id:      "1023",
-		QueueId: "0932",
+		QueueId: 932,
 	}
 )
 
@@ -41,8 +41,17 @@ func TestParseWorkerConfiguration(t *testing.T) {
 	}
 
 	parsedWorker := ParseWorkerConfiguration(bytes.NewReader(testingWorkerAsByte))
+	log.Println(parsedWorker)
+	log.Println(workerTestInstance)
 
-	if parsedWorker != workerTestInstance {
+	expectedWorker := Worker{
+		Vcpu:    workerTestInstance.Vcpu,
+		Ram:     workerTestInstance.Ram,
+		Id:      workerTestInstance.Id,
+		QueueId: workerTestInstance.QueueId,
+	}
+
+	if parsedWorker != expectedWorker {
 		t.Errorf("The parsed worked is different from the expected one")
 	}
 }
@@ -51,19 +60,18 @@ func TestHandleSubscriptionResponse(t *testing.T) {
 	//setup
 	body := make(map[string]string)
 	body["arrebol-worker-token"] = "test-token"
-	body["QueueId"] = "192038"
 
 	bodyAsByte, _ := json.Marshal(body)
 
 	ParseToken = func(tokenStr string) (map[string]interface{}, error) {
-		return map[string]interface{}{"QueueId": "192038"}, nil
+		return map[string]interface{}{"QueueId": uint(192038)}, nil
 	}
 
 	//exercise
 	HandleJoinResponse(&utils.HttpResponse{Body: bodyAsByte, StatusCode: 201}, &workerTestInstance)
 
 	//verification
-	if workerTestInstance.QueueId != "192038" {
+	if workerTestInstance.QueueId != 192038 {
 		t.Errorf("QueueId is not the expected one")
 	}
 
@@ -116,7 +124,7 @@ func TestWorker_GetTask(t *testing.T) {
 
 func TestWorker_GetTaskWithEmptyQueue(t *testing.T) {
 	//setup
-	workerTestInstance.QueueId = ""
+	workerTestInstance.QueueId = 0
 
 	//exercise
 	mockedTask, err := workerTestInstance.GetTask("http://test-server:8000/v1")

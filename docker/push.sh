@@ -1,1 +1,1 @@
-sudo docker push ufcglsd/arrebol-worker:"${1-latest}"
+sudo docker push raonismaneoto/arrebol-worker:"${1-latest}"
