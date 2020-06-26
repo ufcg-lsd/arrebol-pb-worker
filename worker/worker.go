@@ -177,7 +177,9 @@ func (w *Worker) ExecTask(task *Task, serverEndPoint string) {
 	taskExecutor := &TaskExecutor{Cli: *client}
 
 	stateChanges := make(chan TaskState)
-	go taskExecutor.Execute(task, stateChanges)
+	go func() {
+		stateChanges <- taskExecutor.Execute(task)
+	}()
 
 	ticker := time.NewTicker(time.Duration(task.ReportInterval) * time.Second)
 
