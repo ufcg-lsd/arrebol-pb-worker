@@ -205,13 +205,13 @@ func (w *Worker) sendTaskReport(task *Task, executor *TaskExecutor, serverEndPoi
 }
 
 func updateTaskProgress(task *Task, executor *TaskExecutor) {
-	executedCmdsLen, err := executor.Track()
+	progress, err := executor.Progress()
 
 	if err != nil {
 		log.Println(err)
 	}
 
-	task.Progress = executedCmdsLen * 100 / len(task.Commands)
+	task.Progress = progress
 
 	log.Println("progess: " + strconv.Itoa(task.Progress))
 }

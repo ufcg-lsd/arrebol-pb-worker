@@ -76,6 +76,18 @@ func (e *TaskExecutor) Execute(task *Task) TaskState {
 	return TaskFinished
 }
 
+func (e *TaskExecutor) Progress() (int, error) {
+	numExecCmds, err := e.track()
+
+	//raise the error to the upper level
+	if err != nil {
+		return numExecCmds, err
+	}
+
+	progress := numExecCmds * 100 / len(e.Commands)
+	return progress, nil
+}
+
 func (e *TaskExecutor) init(config utils.ContainerConfig) error {
 	exists, err := utils.CheckImage(e.Cli, config.Image)
 	if !exists {
@@ -135,7 +147,7 @@ func (e *TaskExecutor) run(taskId string) error {
 //It returns:
 //1. 0 and an error, if it couldn't access the .ec file in the container
 //2. The amount of executed commands and nil.
-func (e *TaskExecutor) Track() (int, error) {
+func (e *TaskExecutor) track() (int, error) {
 	err := utils.Exec(e.Cli, e.Cid, "touch /arrebol/task-id.ts.ec")
 
 	if err != nil {
