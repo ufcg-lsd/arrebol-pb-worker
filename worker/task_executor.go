@@ -22,14 +22,29 @@ import (
 )
 
 const (
+	WorkerNodeAddressKey = "WORKER_NODE_ADDRESS"
+)
+
+const (
 	TaskScriptExecutorFileName  = "task-script-executor.sh"
 	RunTaskScriptCommandPattern = "/bin/bash %s -d -tsf=%s"
 	DefaultWorkerDockerImage    = "ubuntu"
 )
 
 type TaskExecutor struct {
-	Cli client.Client
-	Cid string
+	Commands []string
+	Cli      *client.Client
+	Cid      string
+}
+
+func NewTaskExecutor(Commands []string, DockerImage string) *TaskExecutor {
+	address := os.Getenv(WorkerNodeAddressKey)
+	client := utils.NewDockerClient(address)
+	executor := &TaskExecutor{
+		Commands: Commands,
+		Cli:      client,
+	}
+	return executor
 }
 
 func (e *TaskExecutor) Execute(task *Task) TaskState {
@@ -56,30 +71,30 @@ func (e *TaskExecutor) Execute(task *Task) TaskState {
 		log.Println(err)
 		return TaskFailed
 	}
-	utils.StopContainer(&e.Cli, e.Cid)
-	utils.RemoveContainer(&e.Cli, e.Cid)
+	utils.StopContainer(e.Cli, e.Cid)
+	utils.RemoveContainer(e.Cli, e.Cid)
 	return TaskFinished
 }
 
 func (e *TaskExecutor) init(config utils.ContainerConfig) error {
-	exists, err := utils.CheckImage(&e.Cli, config.Image)
+	exists, err := utils.CheckImage(e.Cli, config.Image)
 	if !exists {
-		if _, err = utils.Pull(&e.Cli, config.Image); err != nil {
+		if _, err = utils.Pull(e.Cli, config.Image); err != nil {
 			return err
 		}
 	}
-	cid, err := utils.CreateContainer(&e.Cli, config)
+	cid, err := utils.CreateContainer(e.Cli, config)
 
 	if err != nil {
 		return err
 	}
-	err = utils.StartContainer(&e.Cli, cid)
+	err = utils.StartContainer(e.Cli, cid)
 
 	if err != nil {
 		return err
 	}
 
-	err = utils.Exec(&e.Cli, cid, "mkdir /arrebol")
+	err = utils.Exec(e.Cli, cid, "mkdir /arrebol")
 
 	if err != nil {
 		log.Println("Error on creating /arrebol folder")
@@ -88,7 +103,7 @@ func (e *TaskExecutor) init(config utils.ContainerConfig) error {
 
 	taskScriptExecutorPath := os.Getenv("BIN_PATH") + "/" + TaskScriptExecutorFileName
 
-	err = utils.Copy(&e.Cli, cid, taskScriptExecutorPath, "/arrebol/"+TaskScriptExecutorFileName)
+	err = utils.Copy(e.Cli, cid, taskScriptExecutorPath, "/arrebol/"+TaskScriptExecutorFileName)
 
 	e.Cid = cid
 	return err
@@ -104,14 +119,14 @@ func (e *TaskExecutor) init(config utils.ContainerConfig) error {
 func (e *TaskExecutor) send(task *Task) error {
 	taskScriptFileName := "task-id.ts"
 	rawCmdsStr := task.Commands
-	err := utils.Write(&e.Cli, e.Cid, rawCmdsStr, "/arrebol/"+taskScriptFileName)
+	err := utils.Write(e.Cli, e.Cid, rawCmdsStr, "/arrebol/"+taskScriptFileName)
 	return err
 }
 
 func (e *TaskExecutor) run(taskId string) error {
 	taskScriptFilePath := "/arrebol/task-id.ts"
 	cmd := fmt.Sprintf(RunTaskScriptCommandPattern, "/arrebol/"+TaskScriptExecutorFileName, taskScriptFilePath)
-	err := utils.Exec(&e.Cli, e.Cid, cmd)
+	err := utils.Exec(e.Cli, e.Cid, cmd)
 	return err
 }
 
@@ -121,7 +136,7 @@ func (e *TaskExecutor) run(taskId string) error {
 //1. 0 and an error, if it couldn't access the .ec file in the container
 //2. The amount of executed commands and nil.
 func (e *TaskExecutor) Track() (int, error) {
-	err := utils.Exec(&e.Cli, e.Cid, "touch /arrebol/task-id.ts.ec")
+	err := utils.Exec(e.Cli, e.Cid, "touch /arrebol/task-id.ts.ec")
 
 	if err != nil {
 		log.Println(err)
@@ -139,7 +154,7 @@ func (e *TaskExecutor) Track() (int, error) {
 
 func (e *TaskExecutor) getExitCodes() ([]int8, error) {
 	ecFilePath := "/arrebol/task-id" + ".ts.ec"
-	dat, err := utils.Read(&e.Cli, e.Cid, ecFilePath)
+	dat, err := utils.Read(e.Cli, e.Cid, ecFilePath)
 	if err != nil {
 		return nil, err
 	}

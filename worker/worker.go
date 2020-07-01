@@ -9,7 +9,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 )
@@ -40,10 +39,6 @@ type Worker struct {
 	//The queue from which the worker must ask for tasks
 	QueueId uint
 }
-
-const (
-	WorkerNodeAddressKey = "WORKER_NODE_ADDRESS"
-)
 
 type TaskState uint8
 
@@ -172,9 +167,7 @@ func ParseWorkerConfiguration(reader io.Reader) Worker {
 }
 
 func (w *Worker) ExecTask(task *Task, serverEndPoint string) {
-	address := os.Getenv(WorkerNodeAddressKey)
-	client := utils.NewDockerClient(address)
-	taskExecutor := &TaskExecutor{Cli: *client}
+	taskExecutor := NewTaskExecutor(task.Commands, task.DockerImage)
 
 	stateChanges := make(chan TaskState)
 	go func() {
