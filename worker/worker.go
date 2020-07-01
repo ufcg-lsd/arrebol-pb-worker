@@ -174,15 +174,14 @@ func (w *Worker) ExecTask(task *Task, serverEndPoint string) {
 		stateChanges <- taskExecutor.Execute(task)
 	}()
 
-	ticker := time.NewTicker(time.Duration(task.ReportInterval) * time.Second)
+	timeout := time.After(time.Duration(task.ReportInterval) * time.Second)
 
 	for {
 		select {
-		case <-ticker.C:
+		case <-timeout:
 			updateTaskProgress(task, taskExecutor)
 			w.sendTaskReport(task, serverEndPoint)
 		case state := <-stateChanges:
-			ticker.Stop()
 			task.State = state
 			updateTaskProgress(task, taskExecutor)
 			w.sendTaskReport(task, serverEndPoint)
