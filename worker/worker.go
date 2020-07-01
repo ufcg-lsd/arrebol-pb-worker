@@ -179,19 +179,20 @@ func (w *Worker) ExecTask(task *Task, serverEndPoint string) {
 	for {
 		select {
 		case <-ticker.C:
-			w.sendTaskReport(task, taskExecutor, serverEndPoint)
+			updateTaskProgress(task, taskExecutor)
+			w.sendTaskReport(task, serverEndPoint)
 		case state := <-stateChanges:
-			task.State = state
 			ticker.Stop()
-			w.sendTaskReport(task, taskExecutor, serverEndPoint)
+			task.State = state
+			updateTaskProgress(task, taskExecutor)
+			w.sendTaskReport(task, serverEndPoint)
 			return
 		}
 
 	}
 }
 
-func (w *Worker) sendTaskReport(task *Task, executor *TaskExecutor, serverEndPoint string) {
-	updateTaskProgress(task, executor)
+func (w *Worker) sendTaskReport(task *Task, serverEndPoint string) {
 	url := serverEndPoint + "/workers/" + w.Id + "/queues/" + fmt.Sprint(w.QueueId) + "/tasks"
 
 	header := http.Header{}
@@ -209,11 +210,9 @@ func updateTaskProgress(task *Task, executor *TaskExecutor) {
 
 	if err != nil {
 		log.Println(err)
+	} else {
+		task.Progress = progress
 	}
-
-	task.Progress = progress
-
-	log.Println("progess: " + strconv.Itoa(task.Progress))
 }
 
 func parseToken(tokenStr string) (map[string]interface{}, error) {
